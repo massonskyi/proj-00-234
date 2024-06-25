@@ -5,10 +5,10 @@ import pandas as pd
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QIntValidator, QPixmap
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QPushButton, QGridLayout, QLineEdit, \
-    QTextEdit, QHBoxLayout, QMenu, QSizePolicy, QSpacerItem
+    QTextEdit, QHBoxLayout, QMenu, QSizePolicy, QSpacerItem, QSplitter, QTableView, QHeaderView
 from docx import Document
-from fpdf import FPDF
 
+from gui.ABCWidgets.abstractresulttablemodel import ResultTableModel
 from utils.loaders import load_icon
 
 
@@ -16,6 +16,9 @@ class ScrollableContainer(QWidget):
     def __init__(self, data: list = None, file_type: str = None, parent=None):
         super().__init__(parent)
 
+        self.is_show_block = False
+        self.result_layout = None
+        self.result_container = None
         self.icons = {
             'save_word': load_icon('./assets/save2/sword.png'),
             'save_excel': load_icon('./assets/save2/sexcel.png'),
@@ -38,9 +41,10 @@ class ScrollableContainer(QWidget):
         }
         self.textboxes = None
         self.data = data if data else []
-
+        self.result_data = []
         main_layout = QVBoxLayout(self)
-
+        self.result_table_view = QTableView(self)
+        self.result_model = None
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
 
@@ -54,11 +58,14 @@ class ScrollableContainer(QWidget):
         else:
             self.load_default_content(self.scroll_layout)
 
+        # Initialize result table view
+        self.result_table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.result_table_view.verticalHeader().setVisible(False)
+
         self.scroll_area.setWidget(self.scroll_content)
 
         main_layout.addWidget(self.scroll_area)
 
-        # Add additional container with a button
         self.additional_container = QFrame(self)
         self.additional_container.setFrameShape(QFrame.StyledPanel)
         self.additional_layout = QVBoxLayout(self.additional_container)
@@ -72,10 +79,23 @@ class ScrollableContainer(QWidget):
         self.additional_layout.addWidget(self.additional_buttons_container)
         self.additional_container.hide()
 
+        # Initialize the result container
+        self.result_container = QFrame(self)
+        self.result_container.setFrameShape(QFrame.StyledPanel)
+        self.result_layout = QVBoxLayout(self.result_container)
+        self.result_layout.setContentsMargins(10, 10, 10, 10)
+        self.result_layout.setAlignment(Qt.AlignTop)
+        self.result_layout.addWidget(self.result_table_view)
+        self.result_container.setLayout(self.result_layout)
+        self.result_container.hide()
+
         main_layout.addWidget(self.additional_container)
 
         # Connect signals for scrolling
         self.scroll_area.verticalScrollBar().valueChanged.connect(self.check_scroll_position)
+
+        # Add the result container to the main layout
+        main_layout.addWidget(self.result_container)
 
     def add_initial_buttons(self):
         buttons = []
@@ -98,7 +118,7 @@ class ScrollableContainer(QWidget):
 
             menu = QMenu(self)
             for button in buttons[3:]:
-                action = menu.addAction(button.icon(),self.buttons_name.get(button.objectName()))
+                action = menu.addAction(button.icon(), self.buttons_name.get(button.objectName()))
                 action.setObjectName(button.objectName())
                 action.triggered.connect(self.save)  # Connect the QAction's triggered signal to button's click slot
 
@@ -109,6 +129,9 @@ class ScrollableContainer(QWidget):
         spacer_right = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.additional_buttons_layout.insertItem(0, spacer_left)
         self.additional_buttons_layout.addItem(spacer_right)
+        # Add a spacer after the buttons
+        spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.additional_buttons_layout.addItem(spacer)
 
     def save(self):
         sender = self.sender()
@@ -125,7 +148,10 @@ class ScrollableContainer(QWidget):
         elif sender.objectName() == 'save_html':
             self.save_to_html()
         elif sender.objectName() == 'save_txt':
-            print(f"Button {sender.objectName()} clicked")
+            self.save_to_txt()
+        elif sender.objectName() == 'save_xml':
+            self.save_to_xml()
+
     def save_to_word(self):
         document = Document()
         document.add_heading('Data from Textboxes', level=1)
@@ -183,6 +209,29 @@ class ScrollableContainer(QWidget):
                 writer.writerow([item.get("№ п/п", ""), item.get("Показатель", ""), self.textboxes[i].text()])
         print("Document saved as output.csv")
 
+    def save_to_txt(self):
+        with open('output.txt', mode='w', encoding='utf-8') as file:
+            for i, item in enumerate(self.data[0].get('mdth')):
+                line = f"№ п/п: {item.get('№ п/п', '')}, Показатель: {item.get('Показатель', '')}, Ответ субъекта: {self.textboxes[i].text()}\n"
+                file.write(line)
+        print("Document saved as output.txt")
+
+    def save_to_xml(self):
+        from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
+
+        root = Element('root')
+        data = SubElement(root, 'data')
+
+        for i, item in enumerate(self.data[0].get('mdth')):
+            entry = SubElement(data, 'entry')
+            SubElement(entry, 'number').text = item.get('№ п/п', '')
+            SubElement(entry, 'indicator').text = item.get('Показатель', '')
+            SubElement(entry, 'answer').text = self.textboxes[i].text()
+
+        tree = ElementTree(root)
+        tree.write('output.xml', encoding='utf-8', xml_declaration=True)
+        print("Document saved as output.xml")
+
     def save_to_json(self):
         data = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
                  'Ответ субъекта': self.textboxes[i].text()} for i, item in enumerate(self.data[0].get('mdth'))]
@@ -196,14 +245,39 @@ class ScrollableContainer(QWidget):
         df = pd.DataFrame(data)
         df.to_html('output.html', index=False)
         print("Document saved as output.html")
+
     def check_scroll_position(self):
         scroll_bar = self.scroll_area.verticalScrollBar()
         max_scroll = scroll_bar.maximum()
         current_scroll = scroll_bar.value()
-        if current_scroll >= max_scroll:
-            self.additional_container.show()
-        else:
-            self.additional_container.hide()
+        try:
+            if current_scroll >= max_scroll:
+                if not self.is_show_block:
+                    self.show_result_block()
+                    self.is_show_block = True
+                    self.additional_container.show()
+            else:
+                if current_scroll == 0:
+                    self.is_show_block = False
+                    self.hide_result()
+                    self.additional_container.hide()
+        except Exception as e:
+            print(e)
+    def show_result_block(self):
+        # Clear existing widgets in result container
+        for i in reversed(range(self.result_layout.count())):
+            widget = self.result_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Prepare data for the result table view
+        self.result_model = ResultTableModel(self.result_data)
+        self.result_table_view.setModel(self.result_model)
+
+        # Show the result container
+        self.result_container.show()
+    def hide_result(self):
+        self.result_container.hide()
 
     def load_text_content(self, layout):
         text_edit = QTextEdit()
@@ -228,10 +302,17 @@ class ScrollableContainer(QWidget):
         self.textboxes = []
 
         for row, item in enumerate(self.data[0].get('mdth')):
-            number_label = QLabel(item.get("№ п/п", ""))
-            indicator_label = QLabel(item.get("Показатель", ""))
+            number, indicator, answer = item.get("№ п/п", ""), item.get("Показатель", ""), item.get("Ответ субъекта",
+                                                                                                    "")
+            if '(Автосумма)' in answer:
+                self.result_data.append(item)
+                continue
+
+            number_label = QLabel(number)
+            indicator_label = QLabel(indicator)
             answer_textbox = QLineEdit()
-            answer_textbox.setPlaceholderText(item.get("Ответ субъекта", ""))
+            answer_textbox.setObjectName(number) if number != "" else None
+            answer_textbox.setPlaceholderText(answer)
             answer_textbox.setValidator(int_validator)
             answer_textbox.installEventFilter(self)
 
@@ -261,6 +342,8 @@ class ScrollableContainer(QWidget):
 
             elif event.key() == Qt.Key.Key_Up:
                 next_index = (current_index - 1) % len(self.textboxes)
+                if next_index < 0:
+                    next_index = len(self.textboxes) - 1
                 self.textboxes[next_index].setFocus()
                 self.scroll_area.ensureWidgetVisible(self.textboxes[next_index])
                 return True

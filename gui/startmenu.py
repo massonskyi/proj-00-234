@@ -139,12 +139,12 @@ class Ui_StartMenu(QtWidgets.QWidget):
         :return: None
         """
         dir_path = self.directory_input.text()
-        file_type = self.file_type_combobox.currentText(encoding="utf-8")
+        # file_type = self.file_type_combobox.currentText(encoding="utf-8")
 
-        if dir_path and file_type:
-            self.create_project(dir_path, file_type)
+        if dir_path:
+            self.create_project(dir_path)
 
-    def create_project(self, dir_path, file_type) -> None:
+    def create_project(self, dir_path, file_type="*") -> None:
         """
         Creates a project directory and saves project information to a .projmd file.
         :param dir_path: Directory path for the project.
