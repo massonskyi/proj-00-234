@@ -1,11 +1,32 @@
 from PySide6 import QtWidgets
+from PySide6.QtWidgets import QMessageBox
 
 from gui.main_window import Ui_MainWindow
+from gui.startmenu import Ui_StartMenu
+
+
+def check_configuration():
+    import os
+    if not os.path.exists("configuration_config_mdt.json."):
+        print("Configuration file not found. Run the configuration_config_mdt.py script.")
+
+        from utils.configuration_config_mdt import create_configuration_config_mdt
+        try:
+            create_configuration_config_mdt()
+        except Exception as e:
+            QMessageBox.critical(None, "Error", str(e))
+            return False
+        else:
+            print("Configuration file created successfully.")
+            return True
+
 
 if __name__ == "__main__":
     import sys
 
+    check_configuration()
+
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = Ui_MainWindow()
+    MainWindow = Ui_StartMenu()
     MainWindow.show()
     sys.exit(app.exec())

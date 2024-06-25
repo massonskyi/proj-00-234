@@ -203,3 +203,38 @@ def s2yaml(filename: str, data: dict, mode: str = "w", encoding: str = "utf-8") 
     finally:
         if f:
             f.close()
+
+
+def generate_mdth_file(data, filename: str, mode: str  =  "w", encoding: str  =  "utf-8") -> [bool, Exception]:
+    """
+    Generate markdown file from data
+    :param data: data to save
+    :param filename: file name to save markdown
+    :param mode: (Optional) mode to save file
+    :param encoding: (Optional) encoding to save file
+    :return: True or False with Exception
+    """
+    import json
+    with open(filename, mode, encoding=encoding) as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+def load_mdth_file(filename: str) -> [bool, Exception]:
+    """
+    Load markdown file from file
+    :param filename:  file name to load
+    :retuload markdown
+    """
+    import json
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+            data = json.loads(content)
+            return data
+
+    except FileNotFoundError:
+        print(f"Файл '{filename}' не найден.")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Ошибка при чтении файла '{filename}': {e}")
+        return None
