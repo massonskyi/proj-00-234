@@ -1,7 +1,6 @@
 from PySide6 import QtWidgets
 from PySide6.QtWidgets import QMessageBox
 
-from gui.main_window import Ui_MainWindow
 from gui.startmenu import Ui_StartMenu
 
 

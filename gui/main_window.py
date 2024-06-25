@@ -1,8 +1,4 @@
-import json
-import os
-
 from PySide6 import QtWidgets, QtCore, QtGui
-from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter
 
 from gui.widgets.filemanager import FileManager

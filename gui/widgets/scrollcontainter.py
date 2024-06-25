@@ -1,15 +1,13 @@
-import csv
-import json
-
-import pandas as pd
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QIntValidator, QPixmap
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QPushButton, QGridLayout, QLineEdit, \
-    QTextEdit, QHBoxLayout, QMenu, QSizePolicy, QSpacerItem, QSplitter, QTableView, QHeaderView
-from docx import Document
+    QTextEdit, QHBoxLayout, QMenu, QSizePolicy, QSpacerItem, QTableView, QHeaderView
+
 
 from gui.ABCWidgets.abstractresulttablemodel import ResultTableModel
 from utils.loaders import load_icon
+from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, save_to_json, save_to_html, save_to_txt, \
+    save_to_xml
 
 
 class ScrollableContainer(QWidget):
@@ -58,7 +56,6 @@ class ScrollableContainer(QWidget):
         else:
             self.load_default_content(self.scroll_layout)
 
-        # Initialize result table view
         self.result_table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.result_table_view.verticalHeader().setVisible(False)
 
@@ -79,7 +76,6 @@ class ScrollableContainer(QWidget):
         self.additional_layout.addWidget(self.additional_buttons_container)
         self.additional_container.hide()
 
-        # Initialize the result container
         self.result_container = QFrame(self)
         self.result_container.setFrameShape(QFrame.StyledPanel)
         self.result_layout = QVBoxLayout(self.result_container)
@@ -136,115 +132,21 @@ class ScrollableContainer(QWidget):
     def save(self):
         sender = self.sender()
         if sender.objectName() == 'save_word':
-            self.save_to_word()
+            save_to_word(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_excel':
-            self.save_to_excel()
+            save_to_excel(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_pdf':
-            self.save_to_pdf()
+            save_to_pdf(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_csv':
-            self.save_to_csv()
+            save_to_csv(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_json':
-            self.save_to_json()
+            save_to_json(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_html':
-            self.save_to_html()
+            save_to_html(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_txt':
-            self.save_to_txt()
+            save_to_txt(data=self.data, textboxes=self.textboxes)
         elif sender.objectName() == 'save_xml':
-            self.save_to_xml()
-
-    def save_to_word(self):
-        document = Document()
-        document.add_heading('Data from Textboxes', level=1)
-
-        table = document.add_table(rows=1, cols=3)
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = '№ п/п'
-        hdr_cells[1].text = 'Показатель'
-        hdr_cells[2].text = 'Ответ субъекта'
-
-        for i, item in enumerate(self.data[0].get('mdth')):
-            row_cells = table.add_row().cells
-            row_cells[0].text = item.get("№ п/п", "")
-            row_cells[1].text = item.get("Показатель", "")
-            row_cells[2].text = self.textboxes[i].text()
-
-        document.save('output.docx')
-        print("Document saved as output.docx")
-
-    def save_to_excel(self):
-        data = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                 'Ответ субъекта': self.textboxes[i].text()} for i, item in enumerate(self.data[0].get('mdth'))]
-        df = pd.DataFrame(data)
-        df.to_excel('output.xlsx', index=False)
-        print("Document saved as output.xlsx")
-
-    def save_to_pdf(self):
-        from fpdf import FPDF
-
-        class PDF(FPDF):
-            def header(self):
-                self.set_font('Arial', 'B', 12)
-                self.cell(0, 10, 'Data from Textboxes', 0, 1, 'C')
-
-        pdf = PDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Data from Textboxes", ln=True, align='C')
-
-        for i, item in enumerate(self.data[0].get('mdth')):
-            text = f"{item.get('№ п/п', '')} | {item.get('Показатель', '')} | {self.textboxes[i].text()}"
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
-
-        pdf.output("output.pdf")
-        print("Document saved as output.pdf")
-
-    def save_to_csv(self):
-        with open('output.csv', mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(['№ п/п', 'Показатель', 'Ответ субъекта'])
-            for i, item in enumerate(self.data[0].get('mdth')):
-                writer.writerow([item.get("№ п/п", ""), item.get("Показатель", ""), self.textboxes[i].text()])
-        print("Document saved as output.csv")
-
-    def save_to_txt(self):
-        with open('output.txt', mode='w', encoding='utf-8') as file:
-            for i, item in enumerate(self.data[0].get('mdth')):
-                line = f"№ п/п: {item.get('№ п/п', '')}, Показатель: {item.get('Показатель', '')}, Ответ субъекта: {self.textboxes[i].text()}\n"
-                file.write(line)
-        print("Document saved as output.txt")
-
-    def save_to_xml(self):
-        from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
-
-        root = Element('root')
-        data = SubElement(root, 'data')
-
-        for i, item in enumerate(self.data[0].get('mdth')):
-            entry = SubElement(data, 'entry')
-            SubElement(entry, 'number').text = item.get('№ п/п', '')
-            SubElement(entry, 'indicator').text = item.get('Показатель', '')
-            SubElement(entry, 'answer').text = self.textboxes[i].text()
-
-        tree = ElementTree(root)
-        tree.write('output.xml', encoding='utf-8', xml_declaration=True)
-        print("Document saved as output.xml")
-
-    def save_to_json(self):
-        data = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                 'Ответ субъекта': self.textboxes[i].text()} for i, item in enumerate(self.data[0].get('mdth'))]
-        with open('output.json', 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=4, ensure_ascii=False)
-        print("Document saved as output.json")
-
-    def save_to_html(self):
-        data = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                 'Ответ субъекта': self.textboxes[i].text()} for i, item in enumerate(self.data[0].get('mdth'))]
-        df = pd.DataFrame(data)
-        df.to_html('output.html', index=False)
-        print("Document saved as output.html")
+            save_to_xml(data=self.data, textboxes=self.textboxes)
 
     def check_scroll_position(self):
         scroll_bar = self.scroll_area.verticalScrollBar()
