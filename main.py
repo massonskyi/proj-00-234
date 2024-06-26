@@ -8,10 +8,9 @@ def check_configuration():
     import os
     if not os.path.exists("configuration_config_mdt.json."):
         print("Configuration file not found. Run the configuration_config_mdt.py script.")
-
-        from utils.configuration_config_mdt import create_configuration_config_mdt
+        from utils.configuration_config_mdt import ConfigurationMDTH
         try:
-            create_configuration_config_mdt()
+            ConfigurationMDTH.create_configuration_config_mdt().save_as_json()
         except Exception as e:
             QMessageBox.critical(None, "Error", str(e))
             return False
@@ -22,10 +21,8 @@ def check_configuration():
 
 if __name__ == "__main__":
     import sys
-
-    check_configuration()
-
     app = QtWidgets.QApplication(sys.argv)
+    check_configuration()
     MainWindow = Ui_StartMenu()
     MainWindow.show()
     sys.exit(app.exec())

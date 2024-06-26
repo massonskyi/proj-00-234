@@ -1,18 +1,25 @@
+import os
+
 from PySide6 import QtWidgets, QtCore, QtGui
-from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
+    QMessageBox
 
 from gui.widgets.filemanager import FileManager
 from gui.widgets.scrollcontainter import ScrollableContainer
 from utils.loaders import load_icon
+from utils.s2f import save_to_word
+from widgets.pyconsole import ConsoleWidget
+from widgets.bashconsole import BashConsoleWidget
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
     """
     Main window class
     """
     position_widgets = {
-        "menubar": [0, 0, 1, 1],
-        "main_container": [0, 0, 2, 1],
-        "right_toolbar": [0, 1, 2, 1]
+        "main_container": [0, 1, 2, 1],
+        "right_toolbar": [0, 2, 2, 1],
+        "left_toolbar": [0, 0],
     }
 
     def __init__(self, parent: QtWidgets.QWidget = None, *args, **kwargs) -> None:
@@ -20,6 +27,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.right_toolbar_container = None
+        self.left_toolbar_container = None
+        self.file_widget = None
+        self.container = None
+        self.left_toolbar_layout = None
         self.current_icon_state = None
         self.button_hide_file_widget = None
         self.right_toolbar_layout = None
@@ -30,8 +42,30 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
             'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
             'open_full_folder': load_icon('./assets/folder/open_full_folder.png'),
-        }
+            'bash': load_icon('./assets/console/bash.png'),
+            'py': load_icon('./assets/console/py.png'),
 
+        }
+        self.saves_icons = {
+            'save_word': load_icon('./assets/save2/sword.png'),
+            'save_excel': load_icon('./assets/save2/sexcel.png'),
+            'save_pdf': load_icon('./assets/save2/spdf.png'),
+            'save_csv': load_icon('./assets/save2/scsv.png'),
+            'save_json': load_icon('./assets/save2/sjson.png'),
+            'save_html': load_icon('./assets/save2/shtml.png'),
+            'save_txt': load_icon('./assets/save2/stxt.png'),
+            'save_xml': load_icon('./assets/save2/sxml.png'),
+        }
+        self.buttons_name = {
+            'save_word': 'Сохранить как Word',
+            'save_excel': 'Сохранить как Excel',
+            'save_pdf': 'Сохранить как PDF',
+            'save_csv': 'Сохранить как CSV',
+            'save_json': 'Сохранить как JSON',
+            'save_html': 'Сохранить как HTML',
+            'save_txt': 'Сохранить как TXT',
+            'save_xml': 'Сохранить как XML',
+        }
         self.setupUi(self, *args, **kwargs)
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
@@ -40,35 +74,89 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.centralwidget = QtWidgets.QWidget(_MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
+        self.container = self.setupUiMainFrame()
+        self.bash_console  =  BashConsoleWidget(self.container)
+        self.pyconsole =ConsoleWidget(self.container)
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
+        self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout.setSpacing(0)
 
         self.centralwidget.setLayout(self.gridLayout)
         _MainWindow.setCentralWidget(self.centralwidget)
 
         # Create a splitter to divide containers
-        splitter = QSplitter(QtCore.Qt.Horizontal)
-        self.gridLayout.addWidget(splitter, *self.position_widgets.get("main_container"))
+        self.splitter = QSplitter(QtCore.Qt.Horizontal)
+        self.splitter.setHandleWidth(1)  # Makes the handle less conspicuous
+        self.splitter.setStyleSheet("""
+              QSplitter::handle {
+                  background: lightgray;
+              }
+          """)
+        self.gridLayout.addWidget(self.splitter, *self.position_widgets.get("main_container"))
 
-        # Create widgets
-        container = self.setupUiMainFrame()
-        file_widget = FileManager(kwargs.get('path'), _MainWindow)
+        # Create left container that includes the file manager and left toolbar
+        self.left_container = QWidget()
+        self.left_layout = QHBoxLayout(self.left_container)
+        self.left_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_layout.setSpacing(0)
 
-        file_widget.file_selected.connect(container.update_content)
+        self.left_toolbar_container = QFrame(self.left_container)
+        self.left_toolbar_container.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.left_toolbar_container.setFixedWidth(50)
+        self.left_toolbar_container.setMaximumWidth(50)
+        self.left_toolbar_layout = QVBoxLayout(self.left_toolbar_container)
+        self.left_toolbar_layout.setContentsMargins(0, 0, 0, 0)
+        self.left_toolbar_layout.setSpacing(0)
+        self.left_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
 
-        # Add widgets to splitter
-        splitter.addWidget(container)
-        splitter.addWidget(file_widget)
-
-        # Right toolbar layout for buttons
-        self.right_toolbar_layout = QVBoxLayout()
-        self.gridLayout.addLayout(self.right_toolbar_layout, *self.position_widgets.get("right_toolbar"))
-
-        # Button to toggle file widget visibility
         self.button_hide_file_widget = QPushButton()
+        self.button_hide_file_widget.setFixedSize(50, 40)
         self.button_hide_file_widget.clicked.connect(self.toggle_file_widget_visibility)
-        self.right_toolbar_layout.addWidget(self.button_hide_file_widget)
+        self.button_hide_file_widget.setToolTip("Toggle File Widget")
+        self.button_bash = QPushButton(icon=self.icons.get('bash'))
+        self.button_bash.setFixedSize(50, 40)
+        self.button_bash.clicked.connect(self.toggle_bash_widget_visibility)
+        self.button_bash.setToolTip("Toggle bash")
+        self.button_pyconsole = QPushButton(icon=self.icons.get('py'))
+        self.button_pyconsole.setFixedSize(50, 40)
+        self.button_pyconsole.clicked.connect(self.toggle_pyconsole_widget_visibility)
+        self.button_pyconsole.setToolTip("Toggle File Widget")
+        self.left_toolbar_layout.addWidget(self.button_hide_file_widget)
+        self.left_toolbar_layout.addWidget(self.button_bash)
+        self.left_toolbar_layout.addWidget(self.button_pyconsole)
 
+        self.file_widget = FileManager(kwargs.get('path'), _MainWindow)
+        self.file_widget.file_selected.connect(self.container.update_content)
+
+        sub_container = QWidget()
+        sub_container.setFixedWidth(self.button_hide_file_widget.width())
+        sub_container.setLayout(self.left_toolbar_layout)
+
+        self.left_layout.addWidget(sub_container)
+        self.left_layout.addWidget(self.file_widget)
+
+        # Create right container that includes the main container and right toolbar
+        self.right_container = QWidget()
+        self.right_layout = QHBoxLayout(self.right_container)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(0)
+
+        self.right_toolbar_container = QFrame(self.right_container)
+        self.right_toolbar_container.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.right_toolbar_layout = QVBoxLayout(self.right_toolbar_container)
+        self.right_toolbar_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_toolbar_layout.setSpacing(0)
+        self.right_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.right_toolbar_container.setFixedWidth(60)
+
+        self.right_layout.addWidget(self.container)
+        self.right_layout.addWidget(self.right_toolbar_container)
+
+        self.splitter.addWidget(self.left_container)
+        self.splitter.addWidget(self.right_container)
+
+        self.add_initial_buttons()
         self.current_icon_state = "closed"
         self.update_button_icon()
 
@@ -81,22 +169,92 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Setup the main window menu
         :return: QtWidgets.QMenuBar
         """
+
+        def configure_menu(menubar: QtWidgets.QMenuBar) -> None:
+            # New submenu
+            new_menu = QtWidgets.QMenu("New", self)
+            new_file_action = QAction("New File", self)
+            new_file_action.triggered.connect(self.new_file)
+            new_project_action = QAction("New Project", self)
+            new_project_action.triggered.connect(self.new_project)
+            new_python_action = QAction("New Python File", self)
+            new_python_action.triggered.connect(self.new_python_file)
+            new_plain_text_action = QAction("New Plain Text", self)
+            new_plain_text_action.triggered.connect(self.new_plain_text)
+            new_menu.addAction(new_file_action)
+            new_menu.addAction(new_project_action)
+            new_menu.addSeparator()
+            new_menu.addAction(new_python_action)
+            new_menu.addAction(new_plain_text_action)
+
+            # Open submenu
+            open_menu = QtWidgets.QMenu("Open", self)
+            open_file_action = QAction("Open File", self)
+            open_project_action = QAction("Open Project", self)
+            open_menu.addAction(open_file_action)
+            open_menu.addAction(open_project_action)
+
+            save_menu = QtWidgets.QMenu("Save As", self)
+            save_to_word_action = QAction(text="docx", icon=self.saves_icons['save_word'], parent=self)
+            save_to_word_action.setObjectName("save_to_word")
+            save_to_word_action.triggered.connect(self.container.save)
+
+            save_to_excel_action = QAction(text="xlsx", icon=self.saves_icons['save_excel'], parent=self)
+            save_to_excel_action.setObjectName("save_to_excel")
+            save_to_excel_action.triggered.connect(self.container.save)
+
+            save_to_pdf_action = QAction(text="pdf", icon=self.saves_icons['save_pdf'], parent=self)
+            save_to_pdf_action.setObjectName("save_to_pdf")
+            save_to_pdf_action.triggered.connect(self.container.save)
+
+            save_to_csv_action = QAction(text="csv", icon=self.saves_icons['save_csv'], parent=self)
+            save_to_csv_action.setObjectName("save_to_csv")
+            save_to_csv_action.triggered.connect(self.container.save)
+
+            save_to_json_action = QAction(text="json", icon=self.saves_icons['save_json'], parent=self)
+            save_to_json_action.setObjectName("save_to_json")
+            save_to_json_action.triggered.connect(self.container.save)
+
+            save_to_html_action = QAction(text="html", icon=self.saves_icons['save_html'], parent=self)
+            save_to_html_action.setObjectName("save_to_html")
+            save_to_html_action.triggered.connect(self.container.save)
+
+            save_to_xml_action = QAction(text="xml", icon=self.saves_icons['save_xml'], parent=self)
+            save_to_xml_action.setObjectName("save_to_xml")
+            save_to_xml_action.triggered.connect(self.container.save)
+
+            save_to_txt_action = QAction(text="txt", icon=self.saves_icons['save_txt'], parent=self)
+            save_to_txt_action.setObjectName("save_to_txt")
+            save_to_txt_action.triggered.connect(self.container.save)
+
+            save_menu.addAction(save_to_word_action)
+            save_menu.addAction(save_to_excel_action)
+            save_menu.addAction(save_to_pdf_action)
+            save_menu.addAction(save_to_csv_action)
+            save_menu.addAction(save_to_json_action)
+            save_menu.addAction(save_to_html_action)
+            save_menu.addAction(save_to_xml_action)
+            save_menu.addAction(save_to_txt_action)
+
+            file_menu = menubar.addMenu("File")
+            file_menu.addMenu(new_menu)
+            file_menu.addMenu(open_menu)
+            file_menu.addAction("Save")
+            file_menu.addMenu(save_menu)
+            file_menu.addAction("Exit")
+
+            # Edit menu
+            edit_menu = menubar.addMenu("Edit")
+            edit_menu.addAction("Undo")
+            edit_menu.addAction("Redo")
+            edit_menu.addAction("Cut")
+            edit_menu.addAction("Copy")
+            edit_menu.addAction("Paste")
+
         menubar = QtWidgets.QMenuBar(self)
         menubar.setObjectName("menubar")
 
-        file_menu = menubar.addMenu("File")
-        edit_menu = menubar.addMenu("Edit")
-
-        file_menu.addAction("New")
-        file_menu.addAction("Open")
-        file_menu.addAction("Save")
-        file_menu.addAction("Exit")
-
-        edit_menu.addAction("Undo")
-        edit_menu.addAction("Redo")
-        edit_menu.addAction("Cut")
-        edit_menu.addAction("Copy")
-        edit_menu.addAction("Paste")
+        configure_menu(menubar)
 
         return menubar
 
@@ -125,14 +283,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         pass
 
     def toggle_file_widget_visibility(self):
-        """
-        Toggle visibility of the file widget (FileManager)
-        """
-        file_widget = self.centralWidget().findChild(FileManager)
+        file_widget = self.file_widget
         if file_widget:
-            file_widget.setVisible(not file_widget.isVisible())
-            self.current_icon_state = "opened" if file_widget.isVisible() else "closed"
-            self.update_button_icon()
+            file_visible = not file_widget.isVisible()
+            file_widget.setVisible(file_visible)
+            self.adjust_container_sizes()
+
+    def adjust_container_sizes(self):
+        if self.file_widget.isVisible():
+            self.splitter.setSizes([int(0.20 * self.splitter.width()), int(0.80 * self.splitter.width())])
+        else:
+            self.splitter.setSizes([int(0.02 * self.splitter.width()), int(0.95 * self.splitter.width())])
 
     def update_button_icon(self):
         """
@@ -146,3 +307,93 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             self.button_hide_file_widget.setIcon(self.icons["open_clear_folder"])
         else:
             self.button_hide_file_widget.setIcon(QtGui.QIcon())  # Default icon if state not recognized
+
+    def add_initial_buttons(self):
+        buttons = []
+        for it, (key, icon) in enumerate(self.saves_icons.items()):
+            button = QPushButton(icon, "")
+            button.setObjectName(key)
+            button.setFixedSize(50, 40)
+            button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+            button.clicked.connect(self.container.save)
+            button.setToolTip(self.buttons_name.get(key))  # Set tooltip with the button name
+            buttons.append(button)
+
+            if len(buttons) <= 3:
+                self.right_toolbar_layout.addWidget(button)
+
+        if len(buttons) > 3:
+            menu_button = QPushButton("...", self.right_toolbar_container)
+            menu_button.setFixedSize(50, 40)
+            menu_button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+            self.right_toolbar_layout.addWidget(menu_button)
+
+            menu = QtWidgets.QMenu(self)
+            for button in buttons[3:]:
+                action = menu.addAction(button.icon(), self.buttons_name.get(button.objectName()))
+                action.setObjectName(button.objectName())
+                action.triggered.connect(self.container.save)
+
+            menu_button.setMenu(menu)
+
+    def new_file(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Create New File", "", "All Files (*.mdth)", options=options)
+        if file_path:
+            try:
+                with open("configuration_config_mdt.json", "r") as file:
+                    import json
+                    data = json.load(file)
+                from utils.s2f import generate_mdth_file
+                generate_mdth_file(data, file_path + ".mdth")
+                QMessageBox.information(self, "Success", f"New file created: {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
+
+    def new_project(self):
+        options = QFileDialog.Options()
+        directory_path = QFileDialog.getExistingDirectory(self, "Create New Project", options=options)
+        if directory_path:
+            try:
+                os.makedirs(directory_path, exist_ok=True)
+                QMessageBox.information(self, "Success", f"New project created: {directory_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")
+
+    def new_python_file(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Create New Python File", "", "Python Files (*.py)",
+                                                   options=options)
+        if file_path:
+            try:
+                with open(file_path, 'w') as file:
+                    file.write('')
+                QMessageBox.information(self, "Success", f"New Python file created: {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create Python file: {str(e)}")
+
+    def new_plain_text(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Create New Plain Text File", "", "Text Files (*.txt)",
+                                                   options=options)
+        if file_path:
+            try:
+                with open(file_path, 'w') as file:
+                    file.write('')
+                QMessageBox.information(self, "Success", f"New plain text file created: {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create plain text file: {str(e)}")
+
+    def open_file(self):
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
+        if file_path:
+            # Open the file (implementation dependent on your application)
+            QMessageBox.information(self, "File Opened", f"File opened: {file_path}")
+
+    def open_project(self):
+        options = QFileDialog.Options()
+        directory_path = QFileDialog.getExistingDirectory(self, "Open Project", options=options)
+        if directory_path:
+            # Open the project (implementation dependent on your application)
+            QMessageBox.information(self, "Project Opened", f"Project opened: {directory_path}")

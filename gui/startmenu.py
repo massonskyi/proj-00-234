@@ -2,6 +2,7 @@ import json
 import os
 
 from PySide6 import QtWidgets
+from PySide6.QtWidgets import QMessageBox
 
 from gui.main_window import Ui_MainWindow
 
@@ -162,6 +163,14 @@ class Ui_StartMenu(QtWidgets.QWidget):
         projmd_file = os.path.join(dir_path, "proj.projmd")
         with open(projmd_file, 'w') as f:
             json.dump(project_data, f, indent=4)
+
+        from utils.configuration_config_mdt import ConfigurationMDTH
+        try:
+            ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+        else:
+            print("Configuration file created successfully.")
 
         if file_type:
             self.open_main_window(dir_path, file_type)

@@ -1,9 +1,10 @@
 from typing import List
 
 
-def save_to_word(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_word(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save to word data
+    :param result_data: Data to save to word file
     :param data: Data to save to word file
     :param textboxes: Text boxes to save to word file
     :return: True on success, False on failure + Exception
@@ -13,29 +14,38 @@ def save_to_word(data: List, textboxes: List) -> [bool, Exception]:
     except ImportError:
         return False, Exception('docx module is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
-    if not data_prt:
+    data_ptr: dict | None = data[0].get('mdth', None)
+    if not data_ptr:
         return False, Exception('Data cannot be empty')
 
     textboxes_ptr: List = textboxes
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    document: Document = Document()
+    document = Document()
     document.add_heading("РЕЗУЛЬТАТЫ", level=1)
 
-    table: document.Table = document.add_table(rows=1, cols=3)
-    hdr_cells: table.cells = table.rows[0].cells
-    hdr_cells[0].text = '№ п/п'
-    hdr_cells[1].text = 'Показатель'
-    hdr_cells[2].text = 'Ответ субъекта'
+    # Adding main data table
+    table_main = document.add_table(rows=1, cols=3)
+    # Fill main data table
+    for i, item in enumerate(data_ptr):
+        row_cells_main = table_main.add_row().cells
+        row_cells_main[0].text = item.get("idx", "")
+        row_cells_main[1].text = item.get("name", "")
 
-    for i, item in enumerate(data_prt):
-        row_cells: table.sells = table.add_row().cells
-        row_cells[0].text = item.get("№ п/п", "")
-        row_cells[1].text = item.get("Показатель", "")
-        row_cells[2].text = textboxes_ptr[i].text()
+        # Get text from corresponding QLineEdit in textboxes list
+        if i < len(textboxes):
+            row_cells_main[2].text = textboxes[i].text()
 
+    if result_data:
+        document.add_paragraph("\n")
+        document.add_heading("Таблица результатов", level=2)
+
+        table_results = document.add_table(rows=len(result_data), cols=len(result_data[0]) if result_data else 0)
+        for row, row_data in enumerate(result_data):
+            for col, value in enumerate(row_data):
+                cell = table_results.cell(row, col)
+                cell.text = str(value)
     try:
         document.save('Untitled.docx')
     except Exception as e:
