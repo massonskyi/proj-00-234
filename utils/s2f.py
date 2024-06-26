@@ -25,15 +25,13 @@ def save_to_word(data: List, textboxes: List, result_data: List[List[str]]) -> [
     document = Document()
     document.add_heading("РЕЗУЛЬТАТЫ", level=1)
 
-    # Adding main data table
     table_main = document.add_table(rows=1, cols=3)
-    # Fill main data table
+
     for i, item in enumerate(data_ptr):
         row_cells_main = table_main.add_row().cells
         row_cells_main[0].text = item.get("idx", "")
         row_cells_main[1].text = item.get("name", "")
 
-        # Get text from corresponding QLineEdit in textboxes list
         if i < len(textboxes):
             row_cells_main[2].text = textboxes[i].text()
 
@@ -54,7 +52,7 @@ def save_to_word(data: List, textboxes: List, result_data: List[List[str]]) -> [
         return True, None
 
 
-def save_to_excel(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to excel file
     :param data: Data to save to excel file
@@ -74,23 +72,31 @@ def save_to_excel(data: List, textboxes: List) -> [bool, Exception]:
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    data: List = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                   'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
-
-    df: pd.DataFrame = pd.DataFrame(data)
+    data_list: List = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
+                        'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
     try:
-        df.to_excel('Untitled.xlsx', index=False)
+        df_data = pd.DataFrame(data_list)
+        df_result = pd.DataFrame(result_data) if result_data else None
     except Exception as e:
         return False, Exception(e)
     else:
-        return True, None
+        try:
+            with pd.ExcelWriter('Untitled.xlsx') as writer:
+                df_data.to_excel(writer, sheet_name='Data', index=False)
+                if df_result:
+                    df_result.to_excel(writer, sheet_name='Result Data', index=False)
+        except Exception as e:
+            return False, Exception(e)
+        else:
+            return True, None
 
 
-def save_to_pdf(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to pdf file
     :param data: Data to save to pdf file
     :param textboxes: Text boxes to save to pdf file
+    :param result_data: Result data to save to pdf file
     :return: True on success, False on failure + Exception
     """
     try:
@@ -98,7 +104,7 @@ def save_to_pdf(data: List, textboxes: List) -> [bool, Exception]:
     except ImportError:
         return False, Exception('FPDF is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -119,39 +125,49 @@ def save_to_pdf(data: List, textboxes: List) -> [bool, Exception]:
             self.set_font('Arial', 'B', 12)
             self.cell(0, 10, 'Data from Textboxes', 0, 1, 'C')
 
-    pdf: PDF = PDF()
+    pdf = PDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Data from Textboxes", ln=True, align='C')
 
     for i, item in enumerate(data_prt):
-        text: str = f"{item.get('№ п/п', '')} | {item.get('Показатель', '')} | {textboxes_ptr[i].text()}"
+        text = f"{item.get('№ п/п', '')} | {item.get('Показатель', '')} | {textboxes_ptr[i].text()}"
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
+
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, txt="Result Data", ln=True, align='C')
+
+    for row in result_data:
+        text = " | ".join(row)
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
 
     try:
-        pdf.output("output.pdf")
+        pdf.output("Untitled.pdf")
     except Exception as e:
         return False, Exception(e)
     else:
         return True, None
 
 
-def save_to_csv(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to csv file with csv format
     :param data: Data to save to csv file with csv format
     :param textboxes: Text boxes to save to csv file with csv format
-    :return: True on success, False on failure  + Exception
+    :param result_data: Result data to save to csv file
+    :return: True on success, False on failure + Exception
     """
     try:
         import csv
     except ImportError:
-        return False, Exception('CSV is not installed')
+        return False, Exception('CSV module is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -161,29 +177,34 @@ def save_to_csv(data: List, textboxes: List) -> [bool, Exception]:
 
     file = None
     try:
-        file = open('output.csv', mode='w', newline='', encoding='utf-8')
+        file = open('Untitled.csv', mode='w', newline='', encoding='utf-8')
+        writer = csv.writer(file)
+
+        writer.writerow(['№ п/п', 'Показатель', 'Ответ субъекта'])
+        for i, item in enumerate(data_prt):
+            writer.writerow([item.get("№ п/п", ""), item.get("Показатель", ""), textboxes_ptr[i].text()])
+
+        writer.writerow([])
+
+        writer.writerow(['Result Data'])
+        for row in result_data:
+            writer.writerow(row)
+
     except Exception as e:
         return False, Exception(e)
     else:
-        writer: csv.writer = csv.writer(file)
-        writer.writerow(['№ п/п', 'Показатель', 'Ответ субъекта'])
-        try:
-            for i, item in enumerate(data_prt):
-                writer.writerow([item.get("№ п/п", ""), item.get("Показатель", ""), textboxes_ptr[i].text()])
-        except Exception as e:
-            return False, Exception(e)
-        else:
-            return True, None
+        return True, None
     finally:
         if file:
             file.close()
 
 
-def save_to_txt(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_txt(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to txt file
     :param data: Data to save to txt file
     :param textboxes: Text boxes to save to txt file
+    :param result_data: Result data to save to txt file
     :return: True on success, False on failure + Exception
     """
     data_prt: dict | None = data[0].get('mdth', None)
@@ -196,7 +217,7 @@ def save_to_txt(data: List, textboxes: List) -> [bool, Exception]:
 
     file = None
     try:
-        file = open('output.txt', mode='w', encoding='utf-8')
+        file = open('Untitled.txt', mode='w', encoding='utf-8')
     except Exception as e:
         return False, Exception(e)
     else:
@@ -208,6 +229,19 @@ def save_to_txt(data: List, textboxes: List) -> [bool, Exception]:
                 file.write(line)
             except Exception as e:
                 return False, Exception(e)
+
+        file.write("\n")
+        if result_data:
+            file.write("Result Data:\n")
+
+            for row in result_data:
+                line = " | ".join(row) + "\n"
+
+                try:
+                    file.write(line)
+                except Exception as e:
+                    return False, Exception(e)
+
         else:
             return True, None
     finally:
@@ -215,19 +249,20 @@ def save_to_txt(data: List, textboxes: List) -> [bool, Exception]:
             file.close()
 
 
-def save_to_xml(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_xml(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
-    Save data to xml file
+    Save data and result_data to xml file
     :param data: Data to save to xml file
     :param textboxes: Text boxes to save to xml file
-    :return: True on success, False on failure  + Exception
+    :param result_data: Result data to save to xml file
+    :return: True on success, False on failure + Exception
     """
     try:
         from xml.etree.ElementTree import Element, SubElement, ElementTree
     except ImportError:
         return False, Exception('XML is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -235,29 +270,38 @@ def save_to_xml(data: List, textboxes: List) -> [bool, Exception]:
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    root: Element = Element('root')
-    data: SubElement = SubElement(root, 'data')
+    root = Element('root')
 
+    data_element = SubElement(root, 'data')
     for i, item in enumerate(data_prt):
-        entry: SubElement = SubElement(data, 'entry')
+        entry = SubElement(data_element, 'entry')
         SubElement(entry, 'number').text = item.get('№ п/п', '')
         SubElement(entry, 'indicator').text = item.get('Показатель', '')
         SubElement(entry, 'answer').text = textboxes_ptr[i].text()
 
-    tree: ElementTree = ElementTree(root)
+    if result_data:
+        result_element = SubElement(root, 'result_data')
+        for row in result_data:
+            entry = SubElement(result_element, 'entry')
+            SubElement(entry, 'field1').text = row[0] if len(row) > 0 else ''
+            SubElement(entry, 'field2').text = row[1] if len(row) > 1 else ''
+            SubElement(entry, 'field3').text = row[2] if len(row) > 2 else ''
+
+    tree = ElementTree(root)
     try:
-        tree.write('output.xml', encoding='utf-8', xml_declaration=True)
+        tree.write('Untitled.xml', encoding='utf-8', xml_declaration=True)
     except Exception as e:
         return False, Exception(e)
     else:
         return True, None
 
 
-def save_to_json(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_json(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to json file with json format
     :param data: Data to save to json file with json format
     :param textboxes: Text boxes to save to json file with json format
+    :param result_data: Result data to save to json file
     :return: True on success, False on failure + Exception
     """
     try:
@@ -273,17 +317,22 @@ def save_to_json(data: List, textboxes: List) -> [bool, Exception]:
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    data: List = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                   'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
+    # Prepare data
+    data_list = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
+                  'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
+
+    result_list = [{'Field1': row[0], 'Field2': row[1], 'Field3': row[2]} for row in result_data] if result_data else []
+
+    combined_data = {'data': data_list, 'result_data': result_list}
 
     file = None
     try:
-        file = open('output.json', mode='w', encoding='utf-8')
+        file = open('Untitled.json', mode='w', encoding='utf-8')
     except Exception as e:
         return False, Exception(e)
     else:
         try:
-            json.dump(data, file, indent=4, ensure_ascii=False)
+            json.dump(combined_data, file, indent=4, ensure_ascii=False)
         except Exception as e:
             return False, Exception(e)
         else:
@@ -293,11 +342,12 @@ def save_to_json(data: List, textboxes: List) -> [bool, Exception]:
             file.close()
 
 
-def save_to_html(data: List, textboxes: List) -> [bool, Exception]:
+def save_to_html(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to html file with html format with html format
     :param data: Data to save to html file with html format
     :param textboxes: Text boxes to save to html file with html format
+    :param result_data: Result data to save to html file
     :return: True on success, False on failure + Exception
     """
     try:
@@ -313,12 +363,20 @@ def save_to_html(data: List, textboxes: List) -> [bool, Exception]:
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    data: List = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                   'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
+    # Prepare data
+    data_list = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
+                  'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
 
-    df: pd.DataFrame = pd.DataFrame(data)
+    result_df = pd.DataFrame(result_data) if result_data else []
+    result_html = result_df.to_html(index=False)
     try:
-        df.to_html('output.html', index=False)
+        with open('output.html', mode='w', encoding='utf-8') as file:
+            file.write("<html><head><title>Output HTML</title></head><body>\n")
+            file.write("<h2>Data from Textboxes</h2>\n")
+            file.write(pd.DataFrame(data_list).to_html(index=False))
+            file.write("<h2>Result Data</h2>\n")
+            file.write(result_html)
+            file.write("</body></html>")
     except Exception as e:
         return False, Exception(e)
     else:
@@ -338,6 +396,10 @@ def generate_mdth_file(data, filename: str, mode: str = "w", encoding: str = "ut
         import json
     except ImportError:
         return False, Exception('JSON is not installed')
+    try:
+        json_data = json.dumps(data, ensure_ascii=False, indent=4)
+    except Exception as e:
+        return False, e
 
     file = None
     try:
@@ -345,7 +407,7 @@ def generate_mdth_file(data, filename: str, mode: str = "w", encoding: str = "ut
     except Exception as e:
         return False, Exception(e)
     else:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+        file.write(json_data)
         return True, None
     finally:
         if file:

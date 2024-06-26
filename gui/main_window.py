@@ -1,4 +1,5 @@
 import os
+import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtGui import QAction
@@ -28,6 +29,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.bash_console = None
+        self.pyconsole = None
         self.splitter_console = None
         self.right_toolbar_container = None
         self.left_toolbar_container = None
@@ -78,7 +81,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.container = self.setupUiMainFrame()
         self.bash_console = BashConsoleWidget(self.container)
+        self.bash_console.setVisible(False)
         self.pyconsole = ConsoleWidget(self.container)
+        self.pyconsole.setVisible(False)
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
@@ -89,7 +94,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Create a splitter to divide containers
         self.splitter = QSplitter(QtCore.Qt.Horizontal)
-        self.splitter.setHandleWidth(1)  # Makes the handle less conspicuous
+        self.splitter.setHandleWidth(1)
         self.splitter.setStyleSheet("""
               QSplitter::handle {
                   background: lightgray;
@@ -157,28 +162,32 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.splitter.addWidget(self.left_container)
         self.splitter.addWidget(self.right_container)
-
+        self.splitter.setSizes([int(0.20 * self.splitter.width()), int(0.80 * self.splitter.width())])
         self.add_initial_buttons()
         self.current_icon_state = "closed"
         self.update_button_icon()
-        # Create the vertical splitter for consoles
-        self.splitter_console = QSplitter(QtCore.Qt.Vertical)
-        self.splitter_console.setMaximumHeight(0.4 * self.height())
+
+        # Create the horizontal splitter for the consoles
+        self.splitter_console = QSplitter(QtCore.Qt.Horizontal)
         self.splitter_console.addWidget(self.bash_console)
         self.splitter_console.addWidget(self.pyconsole)
 
-        # Create a widget for the vertical console splitter layout
+        # Create a widget for the horizontal console splitter layout
         console_widget = QWidget()
-        console_layout = QVBoxLayout(console_widget)
+        console_layout = QHBoxLayout(console_widget)
         console_layout.addWidget(self.splitter_console)
         console_widget.setLayout(console_layout)
 
-        # Create the horizontal splitter for the container and console layout
+        # Create the vertical splitter for the container and console layout
         self.splitter_block = QSplitter(QtCore.Qt.Vertical)
         self.splitter_block.addWidget(self.splitter)
         self.splitter_block.addWidget(console_widget)
 
         self.gridLayout.addWidget(self.splitter_block, 1, 0, 1, 2)
+
+        # Initial splitter sizes adjustment
+        self.adjust_container_sizes()
+
         menu_bar = self.setupUiMenu()
         _MainWindow.setMenuBar(menu_bar)
         _MainWindow.setWindowTitle("Main Window")
@@ -325,11 +334,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def adjust_container_sizes(self):
         if self.bash_console.isVisible() and self.pyconsole.isVisible():
             self.splitter_console.setSizes(
-                [int(0.5 * self.splitter_console.height()), int(0.5 * self.splitter_console.height())])
+                [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
         elif self.bash_console.isVisible():
-            self.splitter_console.setSizes([int(1.0 * self.splitter_console.height()), 0])
+            self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
         elif self.pyconsole.isVisible():
-            self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.height())])
+            self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.width())])
         else:
             self.splitter_console.setSizes([0, 0])
 
@@ -385,11 +394,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, "Create New File", "", "All Files (*.mdth)", options=options)
         if file_path:
             try:
-                with open("configuration_config_mdt.json", "r") as file:
-                    import json
+                import json
+                with open("configuration_config_mdt.json", "r", encoding="utf-8") as file:
                     data = json.load(file)
+
                 from utils.s2f import generate_mdth_file
-                generate_mdth_file(data, file_path + ".mdth")
+
+                if sys.platform.startswith("win"):
+                    generate_mdth_file(data, file_path)
+                if sys.platform.startswith("lin"):
+                    generate_mdth_file(data, file_path + ".mdth")
+
                 QMessageBox.information(self, "Success", f"New file created: {file_path}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")

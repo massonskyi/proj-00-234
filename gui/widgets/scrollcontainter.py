@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QIntValidator, QPixmap
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QGridLayout, QLineEdit, \
-    QTextEdit, QTableWidget, QTableWidgetItem
+    QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox
 
 from utils.loaders import load_icon
 from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, save_to_json, save_to_html, save_to_txt, \
@@ -73,24 +73,23 @@ class ScrollableContainer(QWidget):
         # Add the result container to the main layout
         main_layout.addWidget(self.result_container)
 
+        self.callbacks = {
+            'save_word': save_to_word,
+            'save_excel': save_to_excel,
+            'save_pdf': save_to_pdf,
+            'save_csv': save_to_csv,
+            'save_json': save_to_json,
+            'save_html': save_to_html,
+            'save_txt': save_to_txt,
+            'save_xml': save_to_xml,
+        }
+
     def save(self):
         sender = self.sender()
-        if sender.objectName() == 'save_word':
-            save_to_word(data=self.data, textboxes=self.textboxes, result_data=self.result_data)
-        elif sender.objectName() == 'save_excel':
-            save_to_excel(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_pdf':
-            save_to_pdf(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_csv':
-            save_to_csv(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_json':
-            save_to_json(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_html':
-            save_to_html(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_txt':
-            save_to_txt(data=self.data, textboxes=self.textboxes)
-        elif sender.objectName() == 'save_xml':
-            save_to_xml(data=self.data, textboxes=self.textboxes)
+        try:
+            self.callbacks[sender.objectName()](data=self.data, textboxes=self.textboxes, result_data=self.result_data)
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', str(e))
 
     def check_scroll_position(self):
         scroll_bar = self.scroll_area.verticalScrollBar()
@@ -164,7 +163,8 @@ class ScrollableContainer(QWidget):
                     for hidden_textbox in self.hidden_textboxes:
                         if hidden_textbox.objectName() == component:
                             if not hidden_textbox.text():  # если значение пустое, вычислить его
-                                formula = (calc["data"].split('=')[1] for row, calc in self.calculations.items() if calc["idx"] == component)
+                                formula = (calc["data"].split('=')[1] for row, calc in self.calculations.items() if
+                                           calc["idx"] == component)
                                 if formula:
                                     hidden_textbox.setText(str(self.evaluate_formula(formula)))
                             value = int(hidden_textbox.text())
