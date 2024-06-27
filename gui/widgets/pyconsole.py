@@ -20,6 +20,14 @@ class ConsoleWidget(QPlainTextEdit):
         self.prompt_style = ['>>> ', f"[{self.number_of_lines}]: "]
         self.insertPlainText(self.prompt_style[self.prompt_set])
         self.interpreter = code.InteractiveConsole(locals={})
+        self.display_system_info()
+
+    def display_system_info(self):
+        system_info = (
+            f"Version: {sys.version}\n"
+            f"Name: {sys.thread_info}\n"
+        )
+        self.insertPlainText(system_info + "\n")
 
     def keyPressEvent(self, event):
         if event.key() in [Qt.Key_Return, Qt.Key_Enter]:
@@ -61,7 +69,7 @@ class ConsoleWidget(QPlainTextEdit):
             self.number_of_lines += 1
             self.update_prompt()
 
-        self.insertPlainText(self.prompt_style[self.prompt_set ])
+        self.insertPlainText(self.prompt_style[self.prompt_set])
 
     def write(self, text):
         self.insertPlainText(text)
@@ -71,6 +79,8 @@ class ConsoleWidget(QPlainTextEdit):
 
     def update_prompt(self):
         self.prompt_style = ['>>> ', f"[{self.number_of_lines}] "]
+
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = QWidget()

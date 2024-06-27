@@ -1,3 +1,4 @@
+import platform
 import sys
 import subprocess
 
@@ -34,6 +35,18 @@ class BashConsoleWidget(QPlainTextEdit):
         self.prompt = '$ '
         self.insertPlainText(self.prompt)
         self.commandThread = None
+        self.display_system_info()
+
+    def display_system_info(self):
+        system_info = (
+            f"System: {platform.system()}\n"
+            f"Node Name: {platform.node()}\n"
+            f"Release: {platform.release()}\n"
+            f"Version: {platform.version()}\n"
+            f"Machine: {platform.machine()}\n"
+            f"Processor: {platform.processor()}\n"
+        )
+        self.insertPlainText(system_info + "\n")
 
     def keyPressEvent(self, event):
         if event.key() in [Qt.Key_Return, Qt.Key_Enter]:
@@ -58,15 +71,3 @@ class BashConsoleWidget(QPlainTextEdit):
     def command_finished(self):
         self.insertPlainText(self.prompt)
         self.setReadOnly(False)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = QWidget()
-    layout = QVBoxLayout()
-    console = BashConsoleWidget()
-    layout.addWidget(console)
-    window.setLayout(layout)
-    window.setWindowTitle('PySide6 Bash Console Widget')
-    window.show()
-    sys.exit(app.exec())

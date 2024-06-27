@@ -72,8 +72,8 @@ def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> 
     if not textboxes_ptr:
         return False, Exception('Text boxes cannot be empty')
 
-    data_list: List = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                        'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
+    data_list: List = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
+                        'data': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
     try:
         df_data = pd.DataFrame(data_list)
         df_result = pd.DataFrame(result_data) if result_data else None
@@ -133,7 +133,7 @@ def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [b
     pdf.cell(200, 10, txt="Data from Textboxes", ln=True, align='C')
 
     for i, item in enumerate(data_prt):
-        text = f"{item.get('№ п/п', '')} | {item.get('Показатель', '')} | {textboxes_ptr[i].text()}"
+        text = f"{item.get('idx', '')} | {item.get('name', '')} | {textboxes_ptr[i].text()}"
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
 
@@ -182,7 +182,7 @@ def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [b
 
         writer.writerow(['№ п/п', 'Показатель', 'Ответ субъекта'])
         for i, item in enumerate(data_prt):
-            writer.writerow([item.get("№ п/п", ""), item.get("Показатель", ""), textboxes_ptr[i].text()])
+            writer.writerow([item.get("idx", ""), item.get("name", ""), textboxes_ptr[i].text()])
 
         writer.writerow([])
 
@@ -222,8 +222,8 @@ def save_to_txt(data: List, textboxes: List, result_data: List[List[str]]) -> [b
         return False, Exception(e)
     else:
         for i, item in enumerate(data_prt):
-            line = (f"№ п/п: {item.get('№ п/п', '')}, "
-                    f"Показатель: {item.get('Показатель', '')}, "
+            line = (f"№ п/п: {item.get('idx', '')}, "
+                    f"Показатель: {item.get('name', '')}, "
                     f"Ответ субъекта: {textboxes[i].text()}\n")
             try:
                 file.write(line)
@@ -275,8 +275,8 @@ def save_to_xml(data: List, textboxes: List, result_data: List[List[str]]) -> [b
     data_element = SubElement(root, 'data')
     for i, item in enumerate(data_prt):
         entry = SubElement(data_element, 'entry')
-        SubElement(entry, 'number').text = item.get('№ п/п', '')
-        SubElement(entry, 'indicator').text = item.get('Показатель', '')
+        SubElement(entry, 'number').text = item.get('idx', '')
+        SubElement(entry, 'indicator').text = item.get('name', '')
         SubElement(entry, 'answer').text = textboxes_ptr[i].text()
 
     if result_data:
@@ -318,8 +318,8 @@ def save_to_json(data: List, textboxes: List, result_data: List[List[str]]) -> [
         return False, Exception('Text boxes cannot be empty')
 
     # Prepare data
-    data_list = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
-                  'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
+    data_list = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
+                  'data': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
 
     result_list = [{'Field1': row[0], 'Field2': row[1], 'Field3': row[2]} for row in result_data] if result_data else []
 
@@ -364,7 +364,7 @@ def save_to_html(data: List, textboxes: List, result_data: List[List[str]]) -> [
         return False, Exception('Text boxes cannot be empty')
 
     # Prepare data
-    data_list = [{'№ п/п': item.get("№ п/п", ""), 'Показатель': item.get("Показатель", ""),
+    data_list = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
                   'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
 
     result_df = pd.DataFrame(result_data) if result_data else []

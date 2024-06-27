@@ -40,6 +40,7 @@ class ScrollableContainer(QWidget):
         main_layout = QVBoxLayout(self)
         self.calculations = {}
         self.textboxes = []
+        self.all_textboxes = []
         self.hidden_textboxes = []
         self.result_table = QTableWidget(self)
         self.scroll_area = QScrollArea(self)
@@ -87,7 +88,11 @@ class ScrollableContainer(QWidget):
     def save(self):
         sender = self.sender()
         try:
-            self.callbacks[sender.objectName()](data=self.data, textboxes=self.textboxes, result_data=self.result_data)
+            event = sender.objectName()
+            if event in self.callbacks:
+                self.callbacks[event](data=self.data, textboxes=self.all_textboxes, result_data=self.result_data)
+            else:
+                QMessageBox.critical(self, 'Ошибка', "ErrorKey")
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', str(e))
 
@@ -108,10 +113,6 @@ class ScrollableContainer(QWidget):
             print(e)
 
     def show_result_block(self):
-        # for textbox in self.textboxes:
-        #     if not textbox.text().strip():
-        #         return
-
         self.result_container.show()
 
         self.update_result_data()
@@ -151,27 +152,34 @@ class ScrollableContainer(QWidget):
         try:
             for component in components:
                 component = component.strip()
+                found = False
 
-                # Проверка в видимых текстовых полях
                 for textbox in reversed(self.textboxes):
                     if textbox.objectName() == component:
-                        value = int(textbox.text())
+                        value = int(textbox.text()) if textbox.text().isdigit() else 0
                         result += value
+                        found = True
                         break
-                else:
-                    # Проверка в скрытых текстовых полях
-                    for hidden_textbox in self.hidden_textboxes:
+
+                if not found:
+                    for hidden_textbox in reversed(self.hidden_textboxes):
                         if hidden_textbox.objectName() == component:
                             if not hidden_textbox.text():  # если значение пустое, вычислить его
-                                formula = (calc["data"].split('=')[1] for row, calc in self.calculations.items() if
-                                           calc["idx"] == component)
+                                formula = next(
+                                    (calc["data"].split('=')[1] for row, calc in self.calculations.items() if
+                                     calc["idx"] == component),
+                                    None
+                                )
                                 if formula:
                                     hidden_textbox.setText(str(self.evaluate_formula(formula)))
-                            value = int(hidden_textbox.text())
+                            value = int(hidden_textbox.text()) if hidden_textbox.text().isdigit() else 0
                             result += value
+                            found = True
                             break
+
             return result
         except Exception as e:
+            print(f"Error evaluating formula: {e}")
             return 0
 
     def update_result_data(self):
@@ -197,8 +205,6 @@ class ScrollableContainer(QWidget):
             if not textbox.text():
                 return
 
-        self.update_result_data()
-
     def load_default_content(self, layout):
         data_ptr = self.data[0].get("mdth", None)
 
@@ -221,11 +227,11 @@ class ScrollableContainer(QWidget):
             grid_layout.addWidget(indicator_label, row, 1)
 
             answer_textbox = QLineEdit()
-            answer_textbox.setText("1")
+
             answer_textbox.setPlaceholderText(item["data"])
             answer_textbox.setValidator(int_validator)
             answer_textbox.installEventFilter(self)
-
+            self.all_textboxes.append(answer_textbox)
             if number == "" or number == "№ п/п":
                 answer_textbox.setObjectName(f"{number}_without_number")
             else:
@@ -239,6 +245,7 @@ class ScrollableContainer(QWidget):
                 continue
 
             if item["data"] != " ":
+                answer_textbox.setText("1")
                 grid_layout.addWidget(answer_textbox, row, 2)
                 self.textboxes.append(answer_textbox)
 

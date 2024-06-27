@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
@@ -81,9 +82,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.container = self.setupUiMainFrame()
         self.bash_console = BashConsoleWidget(self.container)
-        self.bash_console.setVisible(False)
-        self.pyconsole = ConsoleWidget(self.container)
-        self.pyconsole.setVisible(False)
+
+        python_installed = self.check_python_installed()
+
+        if python_installed:
+            self.pyconsole = ConsoleWidget(self.container)
+            self.pyconsole.setVisible(False)
+        else:
+            self.pyconsole = None
+
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
@@ -100,7 +107,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                   background: lightgray;
               }
           """)
-        self.gridLayout.addWidget(self.splitter, *self.position_widgets.get("main_container"))
 
         # Create left container that includes the file manager and left toolbar
         self.left_container = QWidget()
@@ -128,7 +134,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_pyconsole = QPushButton(icon=self.icons.get('py'))
         self.button_pyconsole.setFixedSize(50, 40)
         self.button_pyconsole.clicked.connect(self.toggle_pyconsole_widget_visibility)
-        self.button_pyconsole.setToolTip("Toggle File Widget")
+        self.button_pyconsole.setToolTip("Toggle Python Console")
+
+        if not python_installed:
+            self.button_pyconsole.setEnabled(False)
+
         self.left_toolbar_layout.addWidget(self.button_hide_file_widget)
         self.left_toolbar_layout.addWidget(self.button_bash)
         self.left_toolbar_layout.addWidget(self.button_pyconsole)
@@ -143,7 +153,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_layout.addWidget(sub_container)
         self.left_layout.addWidget(self.file_widget)
 
-        # Create right container that includes the main container and right toolbar
         self.right_container = QWidget()
         self.right_layout = QHBoxLayout(self.right_container)
         self.right_layout.setContentsMargins(0, 0, 0, 0)
@@ -167,31 +176,40 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.current_icon_state = "closed"
         self.update_button_icon()
 
-        # Create the horizontal splitter for the consoles
+        # Create a separate splitter for the consoles
         self.splitter_console = QSplitter(QtCore.Qt.Horizontal)
         self.splitter_console.addWidget(self.bash_console)
-        self.splitter_console.addWidget(self.pyconsole)
+        if python_installed:
+            self.splitter_console.addWidget(self.pyconsole)
 
-        # Create a widget for the horizontal console splitter layout
         console_widget = QWidget()
         console_layout = QHBoxLayout(console_widget)
+        console_layout.setContentsMargins(0, 0, 0, 0)
+        console_layout.setSpacing(0)
         console_layout.addWidget(self.splitter_console)
         console_widget.setLayout(console_layout)
 
-        # Create the vertical splitter for the container and console layout
+        # Create a vertical splitter that contains both the main content and the consoles
         self.splitter_block = QSplitter(QtCore.Qt.Vertical)
         self.splitter_block.addWidget(self.splitter)
         self.splitter_block.addWidget(console_widget)
 
-        self.gridLayout.addWidget(self.splitter_block, 1, 0, 1, 2)
+        self.gridLayout.addWidget(self.splitter_block, 0, 0, 1, 1)
 
-        # Initial splitter sizes adjustment
         self.adjust_container_sizes()
 
         menu_bar = self.setupUiMenu()
         _MainWindow.setMenuBar(menu_bar)
         _MainWindow.setWindowTitle("Main Window")
 
+    def check_python_installed(self):
+        try:
+            subprocess.check_output(['python', '--version'])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+        except FileNotFoundError:
+            return False
     def setupUiMenu(self) -> QtWidgets.QMenuBar:
         """
         Setup the main window menu
