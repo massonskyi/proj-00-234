@@ -5,7 +5,7 @@ import PySide6
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
-    QMessageBox
+    QMessageBox, QMenuBar, QLabel, QMenu
 
 from gui.widgets.filemanager import FileManager
 from gui.widgets.scrollcontainter import ScrollableContainer
@@ -57,6 +57,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'success_question': load_icon('./assets/test/qs.png'),
             'failed_question': load_icon('./assets/test/qc.png'),
             'process_question': load_icon('./assets/test/qp.png'),
+            'menu_exit': load_icon('./assets/main/menu_exit.png'),
+            'menu_file': load_icon('./assets/main/menu_file.png'),
+            'menu_new': load_icon('./assets/main/menu_new.png'),
+            'menu_new_file': load_icon('./assets/main/menu_new_file.png'),
+            'menu_new_project': load_icon('./assets/main/menu_new_project.png'),
+            'menu_open': load_icon('./assets/main/menu_open.png'),
+            'menu_open_file': load_icon('./assets/main/menu_open_file.png'),
+            'menu_open_project': load_icon('./assets/main/menu_open_project.png'),
+            'menu_save': load_icon('./assets/main/menu_save.png'),
+            'menu_save_as': load_icon('./assets/main/menu_save_as.png'),
+            'menu_txt': load_icon('./assets/main/menu_txt.png'),
+            'main_menu': load_icon('./assets/main/main_menu.png'),
+
         }
 
         self.saves_icons = {
@@ -79,7 +92,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'save_txt': 'Сохранить как TXT',
             'save_xml': 'Сохранить как XML',
         }
-        self.current_open_file = None
+        self.current_open_file = ''
         self.setupUi(self, *args, **kwargs)
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
@@ -251,13 +264,14 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         def configure_menu(menubar: QtWidgets.QMenuBar) -> None:
             # New submenu
             new_menu = QtWidgets.QMenu("New", self)
-            new_file_action = QAction("New File", self)
+            new_menu.setIcon(self.icons.get('menu_new'))
+            new_file_action = QAction(text="New File", icon=self.icons.get('menu_new_file'), parent=self)
             new_file_action.triggered.connect(self.new_file)
-            new_project_action = QAction("New Project", self)
+            new_project_action = QAction(text="New Project", icon=self.icons.get('menu_new_project'), parent=self)
             new_project_action.triggered.connect(self.new_project)
-            new_python_action = QAction("New Python File", self)
+            new_python_action = QAction(text="New Python File", icon=self.icons.get('py'), parent=self)
             new_python_action.triggered.connect(self.new_python_file)
-            new_plain_text_action = QAction("New Plain Text", self)
+            new_plain_text_action = QAction(text="New Plain Text", icon=self.icons.get('menu_txt'), parent=self)
             new_plain_text_action.triggered.connect(self.new_plain_text)
             new_menu.addAction(new_file_action)
             new_menu.addAction(new_project_action)
@@ -267,12 +281,14 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
             # Open submenu
             open_menu = QtWidgets.QMenu("Open", self)
-            open_file_action = QAction("Open File", self)
-            open_project_action = QAction("Open Project", self)
+            open_menu.setIcon(self.icons.get('menu_open'))
+            open_file_action = QAction(text="Open File", icon=self.icons.get('menu_file'), parent=self)
+            open_project_action = QAction(text="Open Project", icon=self.icons.get('menu_open_project'), parent=self)
             open_menu.addAction(open_file_action)
             open_menu.addAction(open_project_action)
 
             save_menu = QtWidgets.QMenu("Save As", self)
+            save_menu.setIcon(self.icons.get('menu_save_as'))
             save_to_word_action = QAction(text="docx", icon=self.saves_icons['save_word'], parent=self)
             save_to_word_action.setObjectName("save_to_word")
             save_to_word_action.triggered.connect(self.container.save)
@@ -315,26 +331,56 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             save_menu.addAction(save_to_txt_action)
 
             file_menu = menubar.addMenu("File")
+            file_menu.setFixedWidth(150)
+            file_menu.setIcon(self.icons.get('menu_file'))
             file_menu.addMenu(new_menu)
             file_menu.addMenu(open_menu)
-            file_menu.addAction("Save")
+            save_action = QAction(text="Save", icon=self.icons.get('menu_save'), parent=self)
+            save_action.triggered.connect(self.save_file)
+            file_menu.addAction(save_action)
+
             file_menu.addMenu(save_menu)
-            file_menu.addAction("Exit")
+            file_menu.addSeparator()
+            exit_action = QAction(text="Exit", icon=self.icons.get('menu_exit'), parent=self)
+            exit_action.triggered.connect(self.close)
+            file_menu.addAction(exit_action)
+            file_menu.setIcon(self.icons.get('main_menu'))
 
             # Edit menu
             edit_menu = menubar.addMenu("Edit")
+            edit_menu.setFixedWidth(150)
             edit_menu.addAction("Undo")
             edit_menu.addAction("Redo")
             edit_menu.addAction("Cut")
             edit_menu.addAction("Copy")
             edit_menu.addAction("Paste")
 
-        menubar = QtWidgets.QMenuBar(self)
-        menubar.setObjectName("menubar")
+            projects_menu = menubar.addMenu(os.path.basename(self.current_workspace))
+            projects_menu.triggered.connect(lambda: subprocess.Popen(['explorer', self.current_workspace],
+                                                                     shell=True) if sys.platform.startswith('win') else subprocess.Popen(
+                ['open', self.current_workspace], shell=True))
+            projects_menu.setStyleSheet("color:  #70ba98")
 
-        configure_menu(menubar)
+            # existing_projects = ["/tmp/project1", "/tmp/project2"]
+            # for project_path in existing_projects:
+            #     project_name = os.path.basename(project_path)
+            #     project_action = QAction(project_name, self)
+            #     project_action.triggered.connect(lambda checked, path=project_path: self.open_project(path))
+            #     projects_menu.addAction(project_action)
 
-        return menubar
+        self.menubar = QMenuBar(self)
+        self.menubar.setObjectName("menubar")
+
+        configure_menu(self.menubar)
+
+        self.file_path_label = QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]")
+        self.file_path_label.setObjectName("file_path_label")
+        self.file_path_label.setStyleSheet("color: #7097ba")
+        self.file_path_label.setFixedWidth(QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
+        self.file_path_label.setAlignment(Qt.AlignCenter)
+        self.menubar.setCornerWidget(self.file_path_label, Qt.Corner.TopRightCorner)
+
+        return self.menubar
 
     def setupUiMainFrame(self) -> QWidget:
         """
@@ -350,6 +396,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def update_current_open_file(self, filepath):
         self.current_open_file = filepath
+        self.file_path_label.setText(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]")
+
+        self.file_path_label.setFixedWidth(
+            QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
 
     def keyPressEvent(self, event):
         if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_S:
@@ -363,6 +413,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def save_file(self):
         file_path = self.current_open_file
+        if not file_path:
+            return
+
         if file_path.endswith(".mdth"):
             import json
             try:
