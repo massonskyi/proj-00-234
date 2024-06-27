@@ -3,3 +3,7 @@
 
 proj.projmd
 configuration_config_mdt.json
+dist
+build
+
+main.spec

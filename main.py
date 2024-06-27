@@ -20,13 +20,15 @@ def check_configuration():
             return True
 
 
-
-
-
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     check_configuration()
-    MainWindow = Ui_StartMenu()
-    MainWindow.show()
+    try:
+        MainWindow = Ui_StartMenu()
+        MainWindow.show()
+    except Exception as e:
+        QMessageBox.critical(None, "Error", str(e))
+
     sys.exit(app.exec())

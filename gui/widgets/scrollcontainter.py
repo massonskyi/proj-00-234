@@ -1,12 +1,13 @@
 import json
 import keyword
 import re
+import sys
 
 from PySide6 import QtCore
 from PySide6.QtCore import Qt, QEvent, Signal
 from PySide6.QtGui import QIntValidator, QPixmap, QFont, QTextCursor, QTextCharFormat, QColor
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QGridLayout, QLineEdit, \
-    QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView
+    QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QPushButton
 
 from utils.loaders import load_icon
 from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, save_to_json, save_to_html, save_to_txt, \
@@ -69,20 +70,34 @@ class ScrollableContainer(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
         main_layout.addWidget(self.scroll_area)
 
+        self.reset_button = QPushButton("Новый файл")
+        self.reset_button.clicked.connect(self.reset)
+        self.reset_button.setVisible(False)
+
+        self.calculate_button = QPushButton("Начать расчет")
+        self.calculate_button.clicked.connect(self.toggle_result_block)
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.result_table)
+        layout.addWidget(self.reset_button)
+        widget = QFrame(self)
+        widget.setLayout(layout)
+
         self.result_container = QFrame(self)
         self.result_container.setFrameShape(QFrame.StyledPanel)
         self.result_layout = QVBoxLayout(self.result_container)
         self.result_layout.setContentsMargins(10, 10, 10, 10)
         self.result_layout.setAlignment(Qt.AlignTop)
+        self.result_table.setVisible(False)
         self.result_layout.addWidget(self.result_table)
+        self.result_layout.addWidget(self.calculate_button)
         self.result_container.setLayout(self.result_layout)
-        self.result_container.hide()
+        self.result_container.setVisible(False)
 
         # Connect signals for scrolling
         self.scroll_area.verticalScrollBar().valueChanged.connect(self.check_scroll_position)
 
-        # Add the result container to the main layout
-        main_layout.addWidget(self.result_container)
+        layout.addWidget(self.result_container)
+        main_layout.addWidget(widget)
 
         self.callbacks = {
             'save_word': save_to_word,
@@ -113,6 +128,23 @@ class ScrollableContainer(QWidget):
         if not os.path.exists(f"{path}/export"):
             os.mkdir(f"{path}/export")
 
+    def reset(self):
+        # QMESSAGE_BOX SAVE?
+        self.data = []
+        self.result_data = []
+        self.textboxes = []
+        self.name_textboxes = []
+        self.all_textboxes = []
+        self.hidden_textboxes = []
+        self.result_table.setVisible(False)
+        self.result_container.hide()
+        self.is_show_block = False
+        self.calculate_button.setVisible(True)
+        self.reset_button.hide()
+        self.result_table.hide()
+        self.update_ui(True)
+        self.scroll_area.verticalScrollBar().setValue(0)
+
     def check_scroll_position(self):
         scroll_bar = self.scroll_area.verticalScrollBar()
         max_scroll = scroll_bar.maximum()
@@ -132,9 +164,16 @@ class ScrollableContainer(QWidget):
     def show_result_block(self):
         self.result_container.show()
 
+    def toggle_result_block(self):
+        if not self.result_table.isVisible():
+            self.result_table.setVisible(True)
+            self.update_data()
+            self.calculate_button.hide()
+            self.reset_button.setVisible(True)
+
+    def update_data(self):
         self.update_result_data()
 
-        # Display result data in table
         self.result_table.setRowCount(len(self.result_data))
         self.result_table.setColumnCount(len(self.result_data[0]) if self.result_data else 0)
         for row, row_data in enumerate(self.result_data):
@@ -214,14 +253,14 @@ class ScrollableContainer(QWidget):
             return
 
         event = self.sender().objectName()
-
         for it in range(len(mdth)):
             if event in mdth[it]['idx']:
                 mdth[it]['data'] = self.sender().text()
                 break
 
     def on_text_changed(self):
-        self.update_data_from_sender()
+        if not self.sender().objectName() in self.calculations.keys():
+            self.update_data_from_sender()
 
         self.get_textboxes.emit(self.name_textboxes)
 
@@ -234,7 +273,7 @@ class ScrollableContainer(QWidget):
         if not data_ptr:
             raise Exception("Не удалось получить данные")
 
-        int_validator = QIntValidator(self)
+        # int_validator = QIntValidator(self)
         grid_layout = QGridLayout()
         grid_layout.setColumnStretch(1, 1)
 
@@ -252,7 +291,6 @@ class ScrollableContainer(QWidget):
             answer_textbox = QLineEdit()
             self.all_textboxes.append(answer_textbox)
             answer_textbox.setObjectName(f"{number}")
-            answer_textbox.textChanged.connect(self.on_text_changed)
 
             if item["data"].startswith("(Автосумма)\n"):
                 answer_textbox.setDisabled(True)
@@ -267,9 +305,9 @@ class ScrollableContainer(QWidget):
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
-
-                answer_textbox.setValidator(int_validator)
+                # answer_textbox.setValidator(int_validator)
                 answer_textbox.installEventFilter(self)
+                answer_textbox.textChanged.connect(self.on_text_changed)
                 self.name_textboxes.append([number_label, answer_textbox])
                 self.textboxes.append(answer_textbox)
 
@@ -325,7 +363,7 @@ class ScrollableContainer(QWidget):
         else:
             return None
 
-    def update_ui(self):
+    def update_ui(self, reset=False):
         for i in reversed(range(self.scroll_layout.count())):
             if isinstance(self.scroll_layout.itemAt(i), QGridLayout):
                 for item in reversed(range(self.scroll_layout.itemAt(i).count())):
@@ -336,7 +374,11 @@ class ScrollableContainer(QWidget):
                 widget = self.scroll_layout.itemAt(i).widget()
                 if widget:
                     widget.setParent(None)
-
+        if reset:
+            label = QLabel("Выберите или создайте новый файл")
+            label.setFont(QFont("Arial", 16))
+            self.scroll_layout.addWidget(label)
+            return
         if not self.data:
             self.text_edit = QTextEdit()
             self.text_edit.setObjectName("base")

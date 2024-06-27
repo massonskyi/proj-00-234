@@ -7,8 +7,9 @@ import pdfplumber
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QAction
-from utils.s2f import load_mdth_file
 from docx import Document
+
+from utils.s2f import load_mdth_file
 
 
 class FileManager(QtWidgets.QWidget):

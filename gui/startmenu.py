@@ -61,6 +61,7 @@ class Ui_StartMenu(QtWidgets.QWidget):
         self.create_project_form = QtWidgets.QWidget()
         create_form_layout = QtWidgets.QFormLayout()
         self.directory_input = QtWidgets.QLineEdit()
+        self.directory_input.setReadOnly(True)
         self.directory_button = QtWidgets.QPushButton("Выбрать директорию")
         self.directory_button.clicked.connect(self.select_directory)
 
@@ -82,14 +83,15 @@ class Ui_StartMenu(QtWidgets.QWidget):
         self.open_project_form = QtWidgets.QWidget()
         open_form_layout = QtWidgets.QFormLayout()
         self.file_input = QtWidgets.QLineEdit()
-        self.file_button = QtWidgets.QPushButton("Выбрать файл")
-        self.file_button.clicked.connect(self.select_file)
+        self.file_input.setReadOnly(True)
+        # self.file_button = QtWidgets.QPushButton("Выбрать файл")
+        # self.file_button.clicked.connect(self.select_file)
 
         self.open_button = QtWidgets.QPushButton("Открыть проект")
         self.open_button.clicked.connect(self.open_project)
 
         open_form_layout.addRow("Файл:", self.file_input)
-        open_form_layout.addRow("", self.file_button)
+        # open_form_layout.addRow("", self.file_button)
         open_form_layout.addRow("", self.open_button)
 
         self.open_project_form.setLayout(open_form_layout)
@@ -129,7 +131,7 @@ class Ui_StartMenu(QtWidgets.QWidget):
         :return: None
         """
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Выбрать проект", "",
-                                                             "Все файлы (*);;Текстовые файлы (*.txt);;Python файлы (*.py)")
+                                                             "Все файлы (*.mdth)")
         if file_path:
             self.file_input.setText(file_path)
             self.open_main_window(file_path)

@@ -1,19 +1,18 @@
 import os
 import subprocess
 import sys
-import PySide6
+
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
-    QMessageBox, QMenuBar, QLabel, QMenu
+    QMessageBox, QMenuBar, QLabel
 
+from gui.widgets.bashconsole import BashConsoleWidget
 from gui.widgets.filemanager import FileManager
+from gui.widgets.pyconsole import ConsoleWidget
 from gui.widgets.scrollcontainter import ScrollableContainer
 from gui.widgets.testwidget import TestWidget
 from utils.loaders import load_icon
-from utils.s2f import save_to_word
-from gui.widgets.pyconsole import ConsoleWidget
-from gui.widgets.bashconsole import BashConsoleWidget
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
@@ -31,6 +30,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.splitter = None
+        self.left_container = None
         self.current_workspace = kwargs.get("path")
         self.bash_console = None
         self.pyconsole = None
@@ -111,7 +112,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             self.pyconsole.setVisible(False)
         else:
             self.pyconsole = None
-
+            QMessageBox.warning(self, "Python is not installed",
+                                "Python не обнаружен, некоторый функционал ограничен.\n\n")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
@@ -262,15 +264,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         """
 
         def configure_menu(menubar: QtWidgets.QMenuBar) -> None:
-            # New submenu
             new_menu = QtWidgets.QMenu("New", self)
             new_menu.setIcon(self.icons.get('menu_new'))
             new_file_action = QAction(text="New File", icon=self.icons.get('menu_new_file'), parent=self)
             new_file_action.triggered.connect(self.new_file)
             new_project_action = QAction(text="New Project", icon=self.icons.get('menu_new_project'), parent=self)
             new_project_action.triggered.connect(self.new_project)
-            new_python_action = QAction(text="New Python File", icon=self.icons.get('py'), parent=self)
-            new_python_action.triggered.connect(self.new_python_file)
+
+            if self.pyconsole:
+                new_python_action = QAction(text="New Python File", icon=self.icons.get('py'), parent=self)
+                new_python_action.triggered.connect(self.new_python_file)
+
             new_plain_text_action = QAction(text="New Plain Text", icon=self.icons.get('menu_txt'), parent=self)
             new_plain_text_action.triggered.connect(self.new_plain_text)
             new_menu.addAction(new_file_action)
@@ -283,7 +287,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             open_menu = QtWidgets.QMenu("Open", self)
             open_menu.setIcon(self.icons.get('menu_open'))
             open_file_action = QAction(text="Open File", icon=self.icons.get('menu_file'), parent=self)
+            open_file_action.triggered.connect(self.open_file)
             open_project_action = QAction(text="Open Project", icon=self.icons.get('menu_open_project'), parent=self)
+            open_project_action.triggered.connect(self.open_project)
             open_menu.addAction(open_file_action)
             open_menu.addAction(open_project_action)
 
@@ -346,27 +352,49 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             file_menu.addAction(exit_action)
             file_menu.setIcon(self.icons.get('main_menu'))
 
-            # Edit menu
-            edit_menu = menubar.addMenu("Edit")
-            edit_menu.setFixedWidth(150)
-            edit_menu.addAction("Undo")
-            edit_menu.addAction("Redo")
-            edit_menu.addAction("Cut")
-            edit_menu.addAction("Copy")
-            edit_menu.addAction("Paste")
-
             projects_menu = menubar.addMenu(os.path.basename(self.current_workspace))
-            projects_menu.triggered.connect(lambda: subprocess.Popen(['explorer', self.current_workspace],
-                                                                     shell=True) if sys.platform.startswith('win') else subprocess.Popen(
-                ['open', self.current_workspace], shell=True))
-            projects_menu.setStyleSheet("color:  #70ba98")
+            open_project_action = QAction(text="Open...", icon=self.icons.get('menu_open'), parent=self)
+            open_project_action.triggered.connect(self.open_file_explorer)
+            projects_menu.addAction(open_project_action)
 
-            # existing_projects = ["/tmp/project1", "/tmp/project2"]
+            projects_menu.addSeparator()
+
+            current_project_action = QAction(text=os.path.basename(self.current_workspace),
+                                             icon=self.icons.get('menu_open'), parent=self)
+            current_project_action.triggered.connect(lambda: self.open_project(self.current_workspace))
+            projects_menu.addAction(current_project_action)
+
+            current_project_path_action = QAction(text=self.current_workspace, parent=self)
+            current_project_path_action.setEnabled(False)
+            projects_menu.addAction(current_project_path_action)
+
+            projects_menu.addSeparator()
+
+            # Add recent projects
+            # existing_projects = ["D:\\project\\proj-01", "D:\\project\\proj-02"]
             # for project_path in existing_projects:
             #     project_name = os.path.basename(project_path)
             #     project_action = QAction(project_name, self)
             #     project_action.triggered.connect(lambda checked, path=project_path: self.open_project(path))
             #     projects_menu.addAction(project_action)
+
+            # Styling for the projects menu
+            projects_menu.setStyleSheet("""
+                QMenu {
+                    background-color: #2e2e2e;
+                    color: #ffffff;
+                    border: 1px solid #1e1e1e;
+                }
+                QMenu::item {
+                    color: #7097ba;
+                }
+                QMenu::separator {
+                    height: 1px;
+                    background: #4e4e4e;
+                    margin-left: 10px;
+                    margin-right: 5px;
+                }
+            """)
 
         self.menubar = QMenuBar(self)
         self.menubar.setObjectName("menubar")
@@ -376,11 +404,32 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.file_path_label = QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]")
         self.file_path_label.setObjectName("file_path_label")
         self.file_path_label.setStyleSheet("color: #7097ba")
-        self.file_path_label.setFixedWidth(QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
+        self.file_path_label.setFixedWidth(
+            QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
         self.file_path_label.setAlignment(Qt.AlignCenter)
         self.menubar.setCornerWidget(self.file_path_label, Qt.Corner.TopRightCorner)
 
         return self.menubar
+
+    def open_file_explorer(self, path=None):
+        if not path:
+            path = self.current_workspace
+        print(f"Opening file explorer with path:  {path}")
+        if not os.path.exists(path):
+            print(f"Path does not exist: {path}")
+            return
+
+        try:
+            if sys.platform.startswith('win'):
+                print(f"Opening explorer with path: {path}")
+                subprocess.Popen(['explorer', path], shell=True)
+            elif sys.platform.startswith('linux'):
+                print(f"Opening xdg-open with path: {path}")
+                subprocess.Popen(['xdg-open', path], shell=True)
+            else:
+                raise NotImplementedError("Unsupported operating system")
+        except Exception as e:
+            print(f"Failed to open file explorer: {e}")
 
     def setupUiMainFrame(self) -> QWidget:
         """
@@ -465,22 +514,36 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             self.adjust_container_sizes_()
 
     def adjust_container_sizes_(self):
-        if self.bash_console.isVisible() and self.pyconsole.isVisible():
-            self.splitter_console.setSizes(
-                [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
-            self.splitter_block.setSizes(
-                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
-        elif self.bash_console.isVisible():
-            self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
-            self.splitter_block.setSizes(
-                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
-        elif self.pyconsole.isVisible():
-            self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.width())])
-            self.splitter_block.setSizes(
-                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+        if self.pyconsole:
+            if self.bash_console.isVisible() and self.pyconsole.isVisible():
+                self.splitter_console.setSizes(
+                    [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
+                self.splitter_block.setSizes(
+                    [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            elif self.bash_console.isVisible():
+                self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
+                self.splitter_block.setSizes(
+                    [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            elif self.pyconsole.isVisible():
+                self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.width())])
+                self.splitter_block.setSizes(
+                    [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            else:
+                self.splitter_console.setSizes([0, 0])
+                self.splitter_block.setSizes([int(1.0 * self.splitter_console.width()), 0])
         else:
-            self.splitter_console.setSizes([0, 0])
-            self.splitter_block.setSizes([int(1.0 * self.splitter_console.width()), 0])
+            if self.bash_console.isVisible():
+                self.splitter_console.setSizes(
+                    [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
+                self.splitter_block.setSizes(
+                    [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            elif self.bash_console.isVisible():
+                self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
+                self.splitter_block.setSizes(
+                    [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            else:
+                self.splitter_console.setSizes([0, 0])
+                self.splitter_block.setSizes([int(1.0 * self.splitter_console.width()), 0])
 
     def adjust_container_sizes(self):
         if not self.file_widget.isVisible() and not self.test_widget.isVisible():
@@ -550,14 +613,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def new_project(self):
-        options = QFileDialog.Options()
-        directory_path = QFileDialog.getExistingDirectory(self, "Create New Project", options=options)
-        if directory_path:
-            try:
-                os.makedirs(directory_path, exist_ok=True)
-                QMessageBox.information(self, "Success", f"New project created: {directory_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")
+        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
+
+        # options = QFileDialog.Options()
+        # directory_path = QFileDialog.getExistingDirectory(self, "Create New Project", options=options)
+        # if directory_path:
+        #     try:
+        #         os.makedirs(directory_path, exist_ok=True)
+        #         QMessageBox.information(self, "Success", f"New project created: {directory_path}")
+        #     except Exception as e:
+        #         QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")
 
     def new_python_file(self):
         options = QFileDialog.Options()
@@ -584,15 +649,40 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create plain text file: {str(e)}")
 
     def open_file(self):
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
-        if file_path:
-            # Open the file (implementation dependent on your application)
-            QMessageBox.information(self, "File Opened", f"File opened: {file_path}")
+        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
+
+        # options = QFileDialog.Options()
+        # file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
+        # if file_path:
+        #     try:
+        #         import json
+        #         with open("configuration_config_mdt.json", "r", encoding="utf-8") as file:
+        #             data = json.load(file)
+        #
+        #         from utils.s2f import generate_mdth_file
+        #
+        #         if sys.platform.startswith("win"):
+        #             generate_mdth_file(data, file_path)
+        #         if sys.platform.startswith("lin"):
+        #             generate_mdth_file(data, file_path + ".mdth")
+        #
+        #         QMessageBox.information(self, "Success", f"New file created: {file_path}")
+        #     except Exception as e:
+        #         QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def open_project(self):
-        options = QFileDialog.Options()
-        directory_path = QFileDialog.getExistingDirectory(self, "Open Project", options=options)
-        if directory_path:
-            # Open the project (implementation dependent on your application)
-            QMessageBox.information(self, "Project Opened", f"Project opened: {directory_path}")
+        QMessageBox.information(self,  "Warning", "This function is currently not implemented, added in the future")
+
+        # directory_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
+        # if directory_path:
+        #     projmd_file = os.path.join(directory_path, "proj.projmd")
+        #     if os.path.isfile(projmd_file):
+        #         import json
+        #         with open(projmd_file, 'r') as f:
+        #             project_data = json.load(f)
+        #             self.current_workspace = project_data["directory"]
+        #             self.reset(self.current_workspace)
+
+    def reset(self, path=None):
+        self.file_widget = FileManager(path, self)
+        self.container.reset()
