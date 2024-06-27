@@ -1,9 +1,10 @@
 from typing import List
 
 
-def save_to_word(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_word(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save to word data
+    :param path: path to save to file
     :param result_data: Data to save to word file
     :param data: Data to save to word file
     :param textboxes: Text boxes to save to word file
@@ -45,16 +46,17 @@ def save_to_word(data: List, textboxes: List, result_data: List[List[str]]) -> [
                 cell = table_results.cell(row, col)
                 cell.text = str(value)
     try:
-        document.save('Untitled.docx')
+        document.save(f'{path}/export/Untitled.docx')
     except Exception as e:
         return False, Exception(e)
     else:
         return True, None
 
 
-def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_excel(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to excel file
+    :param path: path to save to file
     :param data: Data to save to excel file
     :param textboxes: Text boxes to save to excel file
     :return: True on success, False on failure + Exception
@@ -81,7 +83,7 @@ def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> 
         return False, Exception(e)
     else:
         try:
-            with pd.ExcelWriter('Untitled.xlsx') as writer:
+            with pd.ExcelWriter(f'{path}/export/Untitled.xlsx') as writer:
                 df_data.to_excel(writer, sheet_name='Data', index=False)
                 if df_result is not None:
                     df_result.to_excel(writer, sheet_name='Result Data', index=False)
@@ -91,9 +93,10 @@ def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> 
             return True, None
 
 
-def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_pdf(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to pdf file
+    :param path: path to save to file
     :param data: Data to save to pdf file
     :param textboxes: Text boxes to save to pdf file
     :param result_data: Result data to save to pdf file
@@ -128,7 +131,6 @@ def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [b
     pdf = PDF()
     pdf.add_page()
 
-
     font_path = './fonts/DejaVuSans.ttf'
     bold_dejavu_path = './fonts/DejaVuSansBold.ttf'
 
@@ -153,15 +155,17 @@ def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [b
         pdf.multi_cell(0, 10, txt=text)
 
     try:
-        pdf.output("Untitled.pdf")
+        pdf.output(f'{path}/export/Untitled.pdf')
     except Exception as e:
         return False, Exception(e)
     else:
         return True, None
 
-def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+
+def save_to_csv(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to csv file with csv format
+    :param path: path to save to file
     :param data: Data to save to csv file with csv format
     :param textboxes: Text boxes to save to csv file with csv format
     :param result_data: Result data to save to csv file
@@ -182,7 +186,7 @@ def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [b
 
     file = None
     try:
-        file = open('Untitled.csv', mode='w', newline='', encoding='utf-8')
+        file = open(f"{path}/export/Untitled.csv", mode='w', newline='', encoding='utf-8')
         writer = csv.writer(file)
 
         writer.writerow(['№ п/п', 'Показатель', 'Ответ субъекта'])
@@ -204,9 +208,10 @@ def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [b
             file.close()
 
 
-def save_to_txt(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_txt(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to txt file
+    :param path: path to save to file
     :param data: Data to save to txt file
     :param textboxes: Text boxes to save to txt file
     :param result_data: Result data to save to txt file
@@ -222,7 +227,7 @@ def save_to_txt(data: List, textboxes: List, result_data: List[List[str]]) -> [b
 
     file = None
     try:
-        file = open('Untitled.txt', mode='w', encoding='utf-8')
+        file = open(f'{path}/export/Untitled.txt', mode='w', encoding='utf-8')
     except Exception as e:
         return False, Exception(e)
     else:
@@ -254,9 +259,10 @@ def save_to_txt(data: List, textboxes: List, result_data: List[List[str]]) -> [b
             file.close()
 
 
-def save_to_xml(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_xml(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data and result_data to xml file
+    :param path: path to save to file
     :param data: Data to save to xml file
     :param textboxes: Text boxes to save to xml file
     :param result_data: Result data to save to xml file
@@ -294,16 +300,17 @@ def save_to_xml(data: List, textboxes: List, result_data: List[List[str]]) -> [b
 
     tree = ElementTree(root)
     try:
-        tree.write('Untitled.xml', encoding='utf-8', xml_declaration=True)
+        tree.write(f'{path}/export/Untitled.xml', encoding='utf-8', xml_declaration=True)
     except Exception as e:
         return False, Exception(e)
     else:
         return True, None
 
 
-def save_to_json(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_json(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to json file with json format
+    :param path: path to save to file
     :param data: Data to save to json file with json format
     :param textboxes: Text boxes to save to json file with json format
     :param result_data: Result data to save to json file
@@ -332,7 +339,7 @@ def save_to_json(data: List, textboxes: List, result_data: List[List[str]]) -> [
 
     file = None
     try:
-        file = open('Untitled.json', mode='w', encoding='utf-8')
+        file = open(f'{path}/export/Untitled.json', mode='w', encoding='utf-8')
     except Exception as e:
         return False, Exception(e)
     else:
@@ -347,9 +354,10 @@ def save_to_json(data: List, textboxes: List, result_data: List[List[str]]) -> [
             file.close()
 
 
-def save_to_html(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
+def save_to_html(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to html file with html format with html format
+    :param path: path to save to file
     :param data: Data to save to html file with html format
     :param textboxes: Text boxes to save to html file with html format
     :param result_data: Result data to save to html file
@@ -371,14 +379,15 @@ def save_to_html(data: List, textboxes: List, result_data: List[List[str]]) -> [
     # Prepare data
     data_list = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
                   'Ответ субъекта': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
-
-    result_df = pd.DataFrame(result_data) if result_data else []
+    data_df = pd.DataFrame(data_list)
+    data_html = data_df.to_html(index=False)
+    result_df = pd.DataFrame(result_data) if result_data else pd.DataFrame()
     result_html = result_df.to_html(index=False)
     try:
-        with open('output.html', mode='w', encoding='utf-8') as file:
+        with open(f'{path}/export/Untitled.html', mode='w', encoding='utf-8') as file:
             file.write("<html><head><title>Output HTML</title></head><body>\n")
             file.write("<h2>Data from Textboxes</h2>\n")
-            file.write(pd.DataFrame(data_list).to_html(index=False))
+            file.write(data_html)
             file.write("<h2>Result Data</h2>\n")
             file.write(result_html)
             file.write("</body></html>")

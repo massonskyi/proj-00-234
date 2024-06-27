@@ -17,8 +17,9 @@ class ScrollableContainer(QWidget):
     get_textboxes = Signal(list)
     show_tests = Signal(list)
 
-    def __init__(self, data: list = None, file_type: str = None, parent=None):
+    def __init__(self, path, data: list = None, file_type: str = None, parent=None):
         super().__init__(parent)
+        self.current_workspace = path
         self.is_show_block = False
         self.result_layout = None
         self.result_container = None
@@ -96,14 +97,21 @@ class ScrollableContainer(QWidget):
 
     def save(self):
         sender = self.sender()
+        self.check_main_dirs(self.current_workspace)
         try:
             event = sender.objectName()
             if event in self.callbacks:
-                self.callbacks[event](data=self.data, textboxes=self.all_textboxes, result_data=self.result_data)
+                self.callbacks[event](path=self.current_workspace, data=self.data, textboxes=self.all_textboxes,
+                                      result_data=self.result_data)
             else:
                 QMessageBox.critical(self, 'Ошибка', "ErrorKey")
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', str(e))
+
+    def check_main_dirs(self, path):
+        import os
+        if not os.path.exists(f"{path}/export"):
+            os.mkdir(f"{path}/export")
 
     def check_scroll_position(self):
         scroll_bar = self.scroll_area.verticalScrollBar()
@@ -194,7 +202,27 @@ class ScrollableContainer(QWidget):
 
             self.result_data.append(row_data)
 
+    def update_data_from_sender(self):
+        if not self.data:
+            print("No data available.")
+            return
+
+        mdth = self.data[0].get("mdth", None)
+
+        if mdth is None:
+            print("No 'mdth' data available.")
+            return
+
+        event = self.sender().objectName()
+
+        for it in range(len(mdth)):
+            if event in mdth[it]['idx']:
+                mdth[it]['data'] = self.sender().text()
+                break
+
     def on_text_changed(self):
+        self.update_data_from_sender()
+
         self.get_textboxes.emit(self.name_textboxes)
 
     def load_default_content(self, layout):
@@ -223,10 +251,7 @@ class ScrollableContainer(QWidget):
 
             answer_textbox = QLineEdit()
             self.all_textboxes.append(answer_textbox)
-            if number == "" or number == "№ п/п":
-                answer_textbox.setObjectName(f"{number}_without_number")
-            else:
-                answer_textbox.setObjectName(f"{number}")
+            answer_textbox.setObjectName(f"{number}")
             answer_textbox.textChanged.connect(self.on_text_changed)
 
             if item["data"].startswith("(Автосумма)\n"):
@@ -236,7 +261,13 @@ class ScrollableContainer(QWidget):
                 continue
 
             if item["data"] != " ":
-                answer_textbox.setPlaceholderText(item["data"])
+                try:
+                    _ = int(item["data"])
+                except ValueError:
+                    answer_textbox.setPlaceholderText(item["data"])
+                else:
+                    answer_textbox.setText(item["data"])
+
                 answer_textbox.setValidator(int_validator)
                 answer_textbox.installEventFilter(self)
                 self.name_textboxes.append([number_label, answer_textbox])

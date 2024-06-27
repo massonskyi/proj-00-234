@@ -145,6 +145,11 @@ class Ui_StartMenu(QtWidgets.QWidget):
         if dir_path:
             self.create_project(dir_path)
 
+    def check_main_dirs(self, path):
+        import os
+        if not os.path.exists(f"{path}/export"):
+            os.mkdir(f"{path}/export")
+
     def create_project(self, dir_path, file_type="*") -> None:
         """
         Creates a project directory and saves project information to a .projmd file.
@@ -160,6 +165,7 @@ class Ui_StartMenu(QtWidgets.QWidget):
             "file_type": file_type
         }
 
+
         projmd_file = os.path.join(dir_path, "proj.projmd")
         with open(projmd_file, 'w') as f:
             json.dump(project_data, f, indent=4)
@@ -171,7 +177,7 @@ class Ui_StartMenu(QtWidgets.QWidget):
             QMessageBox.critical(self, "Error", str(e))
         else:
             print("Configuration file created successfully.")
-
+        self.check_main_dirs(dir_path)
         if file_type:
             self.open_main_window(dir_path, file_type)
 

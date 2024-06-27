@@ -6,8 +6,9 @@ from gui.startmenu import Ui_StartMenu
 
 def check_configuration():
     import os
-    if not os.path.exists("configuration_config_mdt.json."):
-        QMessageBox.information(None, "Warning", "Configuration file not found. Run the configuration_config_mdt.py script.")
+    if not os.path.exists("./configuration_config_mdt.json"):
+        QMessageBox.information(None, "Warning",
+                                "Configuration file not found. Run the configuration_config_mdt.py script.")
         from utils.configuration_config_mdt import ConfigurationMDTH
         try:
             ConfigurationMDTH.create_configuration_config_mdt().save_as_json()
@@ -17,6 +18,9 @@ def check_configuration():
         else:
             QMessageBox.information(None, "Success", "Configuration file created successfully.")
             return True
+
+
+
 
 
 if __name__ == "__main__":

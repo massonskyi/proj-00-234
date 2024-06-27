@@ -31,6 +31,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.current_workspace = kwargs.get("path")
         self.bash_console = None
         self.pyconsole = None
         self.splitter_console = None
@@ -78,7 +79,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'save_txt': 'Сохранить как TXT',
             'save_xml': 'Сохранить как XML',
         }
-        self.current_open_file  = None
+        self.current_open_file = None
         self.setupUi(self, *args, **kwargs)
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
@@ -340,7 +341,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
          Setup the main frame of the main window .
         :return: QWidget
         """
-        container = ScrollableContainer()
+        container = ScrollableContainer(self.current_workspace)
         container.setObjectName("MainContainer")
         return container
 
@@ -348,7 +349,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         pass
 
     def update_current_open_file(self, filepath):
-        self.current_open_file =filepath
+        self.current_open_file = filepath
 
     def keyPressEvent(self, event):
         if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_S:
@@ -356,16 +357,31 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         else:
             super().keyPressEvent(event)
 
+    def closeEvent(self, event):
+        self.save_file()
+        event.accept()
+
     def save_file(self):
         file_path = self.current_open_file
-        if file_path:
+        if file_path.endswith(".mdth"):
+            import json
+            try:
+                data = self.container.get_data()[0].get('mdth')
+                with open(self.current_open_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                print("Data saved successfully.")
+            except Exception as e:
+                print(f"Failed to save data: {e}")
+            return
+        if file_path.endswith((".txt", ".py", ".json")):
             with open(file_path, 'w') as f:
                 text = self.container.get_data()
                 if not text:
                     QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
-                    return
-
                 f.write(text)
+            return
+        else:
+            QMessageBox.information(self, "File saved failed", "File type is not supported")
 
     def toggle_file_widget_visibility(self):
         file_widget = self.file_widget
@@ -399,13 +415,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         if self.bash_console.isVisible() and self.pyconsole.isVisible():
             self.splitter_console.setSizes(
                 [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
-            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            self.splitter_block.setSizes(
+                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         elif self.bash_console.isVisible():
             self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
-            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            self.splitter_block.setSizes(
+                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         elif self.pyconsole.isVisible():
             self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.width())])
-            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
+            self.splitter_block.setSizes(
+                [int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         else:
             self.splitter_console.setSizes([0, 0])
             self.splitter_block.setSizes([int(1.0 * self.splitter_console.width()), 0])

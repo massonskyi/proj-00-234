@@ -54,12 +54,8 @@ class TestWidget(QWidget):
     @Slot(list)
     def updateIcons(self, data):
         label_to_textbox_map = {label.text(): textbox for label, textbox in data}
-
         for row in range(self.table_widget.rowCount()):
             icon_item = self.table_widget.item(row, 0)
-            if icon_item.text() in label_to_textbox_map and icon_item.text() == '-':
-                icon_item.setIcon(QIcon(self.icons[1]))
-                continue
             if icon_item.text() in label_to_textbox_map:
                 if self.is_test_done(label_to_textbox_map[icon_item.text()]):
                     icon_item.setIcon(QIcon(self.icons[0]))  # Done icon

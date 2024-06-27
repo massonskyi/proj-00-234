@@ -63,6 +63,8 @@ class FileManager(QtWidgets.QWidget):
 
     def select_file(self, index):
         file_path = self.model.filePath(index)
+        if not os.path.isfile(file_path):
+            return
         if file_path:
             self.filepath_selected.emit(file_path)
             data = []
