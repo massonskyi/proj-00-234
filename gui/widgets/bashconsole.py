@@ -1,3 +1,4 @@
+import os
 import platform
 import sys
 import subprocess
@@ -32,7 +33,7 @@ class BashConsoleWidget(QPlainTextEdit):
         super().__init__(parent)
         self.setWindowTitle('Bash Console')
         self.setReadOnly(False)
-        self.prompt = '$ '
+        self.prompt = f'{os.getcwd()}$ '
         self.insertPlainText(self.prompt)
         self.commandThread = None
         self.display_system_info()
@@ -47,6 +48,7 @@ class BashConsoleWidget(QPlainTextEdit):
             f"Processor: {platform.processor()}\n"
         )
         self.insertPlainText(system_info + "\n")
+        self.insertPlainText(self.prompt)
 
     def keyPressEvent(self, event):
         if event.key() in [Qt.Key_Return, Qt.Key_Enter]:

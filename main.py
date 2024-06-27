@@ -15,7 +15,7 @@ def check_configuration():
             QMessageBox.critical(None, "Error", str(e))
             return False
         else:
-            QMessageBox.information(None, "Success","Configuration file created successfully.")
+            QMessageBox.information(None, "Success", "Configuration file created successfully.")
             return True
 
 

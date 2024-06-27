@@ -1,14 +1,15 @@
 import os
 import subprocess
 import sys
-
+import PySide6
 from PySide6 import QtWidgets, QtCore, QtGui
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
     QMessageBox
 
 from gui.widgets.filemanager import FileManager
 from gui.widgets.scrollcontainter import ScrollableContainer
+from gui.widgets.testwidget import TestWidget
 from utils.loaders import load_icon
 from utils.s2f import save_to_word
 from gui.widgets.pyconsole import ConsoleWidget
@@ -44,14 +45,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.gridLayout = None
         self.centralwidget = None
         self.assets_path = "./assets"
+
         self.icons = {
             'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
             'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
             'open_full_folder': load_icon('./assets/folder/open_full_folder.png'),
             'bash': load_icon('./assets/console/bash.png'),
             'py': load_icon('./assets/console/py.png'),
-
+            'test_btn': load_icon('./assets/test/button.png'),
+            'success_question': load_icon('./assets/test/qs.png'),
+            'failed_question': load_icon('./assets/test/qc.png'),
+            'process_question': load_icon('./assets/test/qp.png'),
         }
+
         self.saves_icons = {
             'save_word': load_icon('./assets/save2/sword.png'),
             'save_excel': load_icon('./assets/save2/sexcel.png'),
@@ -72,6 +78,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'save_txt': 'Сохранить как TXT',
             'save_xml': 'Сохранить как XML',
         }
+        self.current_open_file  = None
         self.setupUi(self, *args, **kwargs)
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
@@ -114,44 +121,67 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_layout.setContentsMargins(0, 0, 0, 0)
         self.left_layout.setSpacing(0)
 
+        # Left toolbar with buttons
         self.left_toolbar_container = QFrame(self.left_container)
         self.left_toolbar_container.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.left_toolbar_container.setFixedWidth(50)
         self.left_toolbar_container.setMaximumWidth(50)
+
         self.left_toolbar_layout = QVBoxLayout(self.left_toolbar_container)
         self.left_toolbar_layout.setContentsMargins(0, 0, 0, 0)
         self.left_toolbar_layout.setSpacing(0)
         self.left_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
 
+        # Buttons for toggling visibility
         self.button_hide_file_widget = QPushButton()
         self.button_hide_file_widget.setFixedSize(50, 40)
         self.button_hide_file_widget.clicked.connect(self.toggle_file_widget_visibility)
         self.button_hide_file_widget.setToolTip("Toggle File Widget")
+
         self.button_bash = QPushButton(icon=self.icons.get('bash'))
         self.button_bash.setFixedSize(50, 40)
         self.button_bash.clicked.connect(self.toggle_bash_widget_visibility)
-        self.button_bash.setToolTip("Toggle bash")
+        self.button_bash.setToolTip("Toggle Bash Console")
+
         self.button_pyconsole = QPushButton(icon=self.icons.get('py'))
         self.button_pyconsole.setFixedSize(50, 40)
         self.button_pyconsole.clicked.connect(self.toggle_pyconsole_widget_visibility)
         self.button_pyconsole.setToolTip("Toggle Python Console")
 
+        self.button_test = QPushButton(icon=self.icons.get('test_btn'))
+        self.button_test.setFixedSize(50, 40)
+        self.button_test.clicked.connect(self.toggle_tests_widget_visibility)
+        self.button_test.setToolTip("Toggle tests")
+
         if not python_installed:
             self.button_pyconsole.setEnabled(False)
 
+        # Add buttons to the toolbar layout
         self.left_toolbar_layout.addWidget(self.button_hide_file_widget)
         self.left_toolbar_layout.addWidget(self.button_bash)
         self.left_toolbar_layout.addWidget(self.button_pyconsole)
+        self.left_toolbar_layout.addWidget(self.button_test)
 
+        # Create splitter for FileManager and TestWidget
+        self.left_toolbar_splitter = QSplitter(QtCore.Qt.Vertical)
+        self.test_widget = TestWidget(icons=[self.icons.get('success_question'),
+                                             self.icons.get('failed_question'),
+                                             self.icons.get('process_question')],
+                                      parent=self.left_container)
+
+        self.container.get_textboxes.connect(self.test_widget.updateIcons)
+        self.container.show_tests.connect(self.test_widget.loadTests)
         self.file_widget = FileManager(kwargs.get('path'), _MainWindow)
         self.file_widget.file_selected.connect(self.container.update_content)
+        self.file_widget.filepath_selected.connect(self.update_current_open_file)
 
-        sub_container = QWidget()
-        sub_container.setFixedWidth(self.button_hide_file_widget.width())
-        sub_container.setLayout(self.left_toolbar_layout)
+        # Add FileManager and TestWidget to the splitter
+        self.left_toolbar_splitter.addWidget(self.file_widget)
+        self.left_toolbar_splitter.addWidget(self.test_widget)
 
-        self.left_layout.addWidget(sub_container)
-        self.left_layout.addWidget(self.file_widget)
+        # Add splitter and left toolbar container to the left layout
+        self.left_layout.addWidget(self.left_toolbar_container)
+        self.left_layout.addWidget(self.left_toolbar_splitter)
 
         self.right_container = QWidget()
         self.right_layout = QHBoxLayout(self.right_container)
@@ -196,7 +226,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.gridLayout.addWidget(self.splitter_block, 0, 0, 1, 1)
 
-        self.adjust_container_sizes()
+        self.adjust_container_sizes_()
 
         menu_bar = self.setupUiMenu()
         _MainWindow.setMenuBar(menu_bar)
@@ -210,6 +240,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             return False
         except FileNotFoundError:
             return False
+
     def setupUiMenu(self) -> QtWidgets.QMenuBar:
         """
         Setup the main window menu
@@ -309,27 +340,42 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
          Setup the main frame of the main window .
         :return: QWidget
         """
-        container = ScrollableContainer(data=["Open file"], file_type='text')
+        container = ScrollableContainer()
         container.setObjectName("MainContainer")
         return container
 
     def setupUiStatusBar(self, _MainWindow: QtWidgets.QStatusBar) -> None:
         pass
 
-    def setupUiBashConsole(self, _MainWindow: QtWidgets.QMainWindow) -> None:
-        pass
+    def update_current_open_file(self, filepath):
+        self.current_open_file =filepath
 
-    def setupUiFileManager(self, _MainWindow: QtWidgets.QMainWindow) -> None:
-        pass
+    def keyPressEvent(self, event):
+        if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_S:
+            self.save_file()
+        else:
+            super().keyPressEvent(event)
 
-    def setupUiTableManager(self, _MainWindow: QtWidgets.QMainWindow) -> None:
-        pass
+    def save_file(self):
+        file_path = self.current_open_file
+        if file_path:
+            with open(file_path, 'w') as f:
+                text = self.container.get_data()
+                if not text:
+                    QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
+                    return
 
-    def setupUiGraphManager(self, _MainWindow: QtWidgets.QMainWindow) -> None:
-        pass
+                f.write(text)
 
     def toggle_file_widget_visibility(self):
         file_widget = self.file_widget
+        if file_widget:
+            file_visible = not file_widget.isVisible()
+            file_widget.setVisible(file_visible)
+            self.adjust_container_sizes()
+
+    def toggle_tests_widget_visibility(self):
+        file_widget = self.test_widget
         if file_widget:
             file_visible = not file_widget.isVisible()
             file_widget.setVisible(file_visible)
@@ -340,31 +386,35 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         if file_widget:
             file_visible = not file_widget.isVisible()
             file_widget.setVisible(file_visible)
-            self.adjust_container_sizes()
+            self.adjust_container_sizes_()
 
     def toggle_pyconsole_widget_visibility(self):
         file_widget = self.pyconsole
         if file_widget:
             file_visible = not file_widget.isVisible()
             file_widget.setVisible(file_visible)
-            self.adjust_container_sizes()
+            self.adjust_container_sizes_()
 
-    def adjust_container_sizes(self):
+    def adjust_container_sizes_(self):
         if self.bash_console.isVisible() and self.pyconsole.isVisible():
             self.splitter_console.setSizes(
                 [int(0.5 * self.splitter_console.width()), int(0.5 * self.splitter_console.width())])
+            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         elif self.bash_console.isVisible():
             self.splitter_console.setSizes([int(1.0 * self.splitter_console.width()), 0])
+            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         elif self.pyconsole.isVisible():
             self.splitter_console.setSizes([0, int(1.0 * self.splitter_console.width())])
+            self.splitter_block.setSizes([int(0.7 * self.splitter_console.width()), int(0.3 * self.splitter_console.width())])
         else:
             self.splitter_console.setSizes([0, 0])
+            self.splitter_block.setSizes([int(1.0 * self.splitter_console.width()), 0])
 
     def adjust_container_sizes(self):
-        if self.file_widget.isVisible():
-            self.splitter.setSizes([int(0.20 * self.splitter.width()), int(0.80 * self.splitter.width())])
-        else:
+        if not self.file_widget.isVisible() and not self.test_widget.isVisible():
             self.splitter.setSizes([int(0.02 * self.splitter.width()), int(0.95 * self.splitter.width())])
+        else:
+            self.splitter.setSizes([int(0.20 * self.splitter.width()), int(0.80 * self.splitter.width())])
 
     def update_button_icon(self):
         """

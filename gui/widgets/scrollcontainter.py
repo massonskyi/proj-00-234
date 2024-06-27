@@ -1,7 +1,12 @@
-from PySide6.QtCore import Qt, QEvent
-from PySide6.QtGui import QIntValidator, QPixmap
+import json
+import keyword
+import re
+
+from PySide6 import QtCore
+from PySide6.QtCore import Qt, QEvent, Signal
+from PySide6.QtGui import QIntValidator, QPixmap, QFont, QTextCursor, QTextCharFormat, QColor
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QGridLayout, QLineEdit, \
-    QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox
+    QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView
 
 from utils.loaders import load_icon
 from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, save_to_json, save_to_html, save_to_txt, \
@@ -9,6 +14,9 @@ from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, sav
 
 
 class ScrollableContainer(QWidget):
+    get_textboxes = Signal(list)
+    show_tests = Signal(list)
+
     def __init__(self, data: list = None, file_type: str = None, parent=None):
         super().__init__(parent)
         self.is_show_block = False
@@ -40,6 +48,7 @@ class ScrollableContainer(QWidget):
         main_layout = QVBoxLayout(self)
         self.calculations = {}
         self.textboxes = []
+        self.name_textboxes = []
         self.all_textboxes = []
         self.hidden_textboxes = []
         self.result_table = QTableWidget(self)
@@ -130,20 +139,6 @@ class ScrollableContainer(QWidget):
     def hide_result(self):
         self.result_container.hide()
 
-    def load_text_content(self, layout):
-        text_edit = QTextEdit()
-        for item in self.data:
-            text_edit.append(item)
-        layout.addWidget(text_edit)
-
-    def load_image_content(self, layout):
-        for item in self.data:
-            image_label = QLabel()
-            pixmap = QPixmap(item.get('image_path', ''))
-            if not pixmap.isNull():
-                image_label.setPixmap(pixmap.scaledToWidth(400))  # Adjust width as needed
-                layout.addWidget(image_label)
-
     def evaluate_formula(self, components):
         """Evaluate a formula by replacing placeholders with actual values."""
         components = components.split('+')
@@ -200,12 +195,12 @@ class ScrollableContainer(QWidget):
             self.result_data.append(row_data)
 
     def on_text_changed(self):
-        """Handler for text changes in textboxes."""
-        for textbox in self.textboxes:
-            if not textbox.text():
-                return
+        self.get_textboxes.emit(self.name_textboxes)
 
     def load_default_content(self, layout):
+        if not self.data:
+            return
+
         data_ptr = self.data[0].get("mdth", None)
 
         if not data_ptr:
@@ -227,10 +222,6 @@ class ScrollableContainer(QWidget):
             grid_layout.addWidget(indicator_label, row, 1)
 
             answer_textbox = QLineEdit()
-
-            answer_textbox.setPlaceholderText(item["data"])
-            answer_textbox.setValidator(int_validator)
-            answer_textbox.installEventFilter(self)
             self.all_textboxes.append(answer_textbox)
             if number == "" or number == "№ п/п":
                 answer_textbox.setObjectName(f"{number}_without_number")
@@ -245,15 +236,23 @@ class ScrollableContainer(QWidget):
                 continue
 
             if item["data"] != " ":
-                answer_textbox.setText("1")
-                grid_layout.addWidget(answer_textbox, row, 2)
+                answer_textbox.setPlaceholderText(item["data"])
+                answer_textbox.setValidator(int_validator)
+                answer_textbox.installEventFilter(self)
+                self.name_textboxes.append([number_label, answer_textbox])
                 self.textboxes.append(answer_textbox)
 
+                grid_layout.addWidget(answer_textbox, row, 2)
+
+        self.show_tests.emit(self.name_textboxes)
         layout.addLayout(grid_layout)
 
     def eventFilter(self, source, event):
         if not isinstance(event, QEvent):
             return False
+
+        if event.type() == QtCore.QEvent.FocusIn:
+            self.get_textboxes.emit(self.name_textboxes)
 
         if event.type() == QEvent.KeyPress and isinstance(source, QLineEdit):
             current_index = self.textboxes.index(source)
@@ -287,6 +286,14 @@ class ScrollableContainer(QWidget):
         self.data = data
         self.update_ui()
 
+    def get_data(self):
+        if self.data:
+            return self.data
+        elif not self.data and hasattr(self, 'text_edit'):
+            return self.text_edit.toPlainText()
+        else:
+            return None
+
     def update_ui(self):
         for i in reversed(range(self.scroll_layout.count())):
             if isinstance(self.scroll_layout.itemAt(i), QGridLayout):
@@ -299,13 +306,178 @@ class ScrollableContainer(QWidget):
                 if widget:
                     widget.setParent(None)
 
+        if not self.data:
+            self.text_edit = QTextEdit()
+            self.text_edit.setObjectName("base")
+            self.text_edit.setReadOnly(False)
+            self.text_edit.setFont(QFont("Arial", 12))
+            self.text_edit.setStyleSheet(
+                "QTextEdit { border: none; background-color: #f4f4f4; color: black; padding: 10px; }")
+            self.scroll_layout.addWidget(self.text_edit)
+            return
+
         if self.data and isinstance(self.data, list):
             if self.data[0] and isinstance(self.data[0], dict):
                 first_key = next(iter(self.data[0].keys()))
                 if first_key == 'image_path':
                     self.load_image_content(self.scroll_layout)
-
-                if first_key == 'mdth':
+                elif first_key == 'mdth':
                     self.load_default_content(self.scroll_layout)
+                else:
+                    self.load_table_content(self.scroll_layout, self.data)
             else:
                 self.load_text_content(self.scroll_layout)
+
+    def load_text_content(self, layout):
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(False)
+        text_edit.setFont(QFont("Arial", 12))
+        text_edit.setStyleSheet("QTextEdit { border: none; background-color: #f4f4f4; color: black; padding: 10px; }")
+
+        # for item in self.data:
+        #     if self.is_json(item):
+        #         self.format_json(text_edit, item)
+        #     elif self.is_xml(item):
+        #         self.format_xml(text_edit, item)
+        #     # elif self.is_python(item):
+        #     #     self.format_python(text_edit, item)
+        #     else:
+
+        self.format_txt(text_edit, self.data)
+        layout.addWidget(text_edit)
+
+    def is_json(self, text):
+        try:
+            json.loads(text)
+            return True
+        except ValueError:
+            return False
+
+    def is_xml(self, text):
+        import xml.etree.ElementTree as ET
+        try:
+            ET.fromstring(text)
+            return True
+        except ET.ParseError:
+            return False
+
+    # def is_python(self, text):
+    #     try:
+    #         compile(text, '<string>', 'exec')
+    #         return True
+    #     except SyntaxError:
+    #         return False
+
+    def format_json(self, text_edit, text):
+        formatted_json = json.dumps(json.loads(text), indent=4)
+        text_edit.append(formatted_json)
+
+    def format_xml(self, text_edit, text):
+        import xml.etree.ElementTree as ET
+        try:
+            tree = ET.ElementTree(ET.fromstring(text))
+            formatted_xml = ET.tostring(tree.getroot(), encoding='unicode')
+            text_edit.append(formatted_xml)
+        except ET.ParseError as e:
+            text_edit.append(f"Invalid XML: {str(e)}")
+
+    # def format_python(self, text_edit, text):
+    #     text_edit.setPlainText(text)
+    #     cursor = text_edit.textCursor()
+    #     cursor.select(QTextCursor.Document)
+    #     cursor.setCharFormat(QTextCharFormat())
+    #
+    #     keywords_format = QTextCharFormat()
+    #     keywords_format.setForeground(QColor("blue"))
+    #     keywords_format.setFontWeight(QFont.Bold)
+    #     keywords = keyword.kwlist
+    #
+    #     strings_format = QTextCharFormat()
+    #     strings_format.setForeground(QColor("magenta"))
+    #
+    #     comments_format = QTextCharFormat()
+    #     comments_format.setForeground(QColor("green"))
+    #
+    #     regex_keywords = r'\b(?:' + '|'.join(re.escape(word) for word in keywords) + r')\b'
+    #     regex_strings = r'"[^"\\]*(\\.[^"\\]*)*"|\'[^\'\\]*(\\.[^\'\\]*)*\''
+    #     regex_comments = r'#.*'
+    #
+    #     cursor.movePosition(QTextCursor.Start)
+    #     while not cursor.atEnd():
+    #         cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+    #         line = cursor.selectedText()
+    #
+    #         for match in re.finditer(regex_keywords, line):
+    #             cursor.setPosition(cursor.selectionStart() + match.start())
+    #             cursor.setPosition(cursor.selectionStart() + match.end(), QTextCursor.KeepAnchor)
+    #             cursor.setCharFormat(keywords_format)
+    #
+    #         for match in re.finditer(regex_strings, line):
+    #             cursor.setPosition(cursor.selectionStart() + match.start())
+    #             cursor.setPosition(cursor.selectionStart() + match.end(), QTextCursor.KeepAnchor)
+    #             cursor.setCharFormat(strings_format)
+    #
+    #         for match in re.finditer(regex_comments, line):
+    #             cursor.setPosition(cursor.selectionStart() + match.start())
+    #             cursor.setPosition(cursor.selectionStart() + match.end(), QTextCursor.KeepAnchor)
+    #             cursor.setCharFormat(comments_format)
+    #
+    #         cursor.movePosition(QTextCursor.NextBlock)
+
+    def format_txt(self, text_edit, text):
+        for item in text:
+            if isinstance(item, list):
+                for subitem in item:
+                    text_edit += str(subitem)
+            text_edit.append(item)
+
+    def load_image_content(self, layout):
+        for item in self.data:
+            image_label = QLabel()
+            pixmap = QPixmap(item.get('image_path', ''))
+            if not pixmap.isNull():
+                image_label.setPixmap(pixmap.scaledToWidth(400))  # Adjust width as needed
+                image_label.setAlignment(Qt.AlignCenter)
+                image_label.setStyleSheet("QLabel { margin: 10px; }")
+                layout.addWidget(image_label)
+
+    def load_table_content(self, layout, data):
+        if data and data[0].get('dataword', None):
+            for table_data in data[0].get('dataword', None):
+                table_widget = QTableWidget()
+                headers = table_data[1]  # Assuming the first row is the header
+                table_widget.setColumnCount(len(headers))
+                table_widget.setHorizontalHeaderLabels(headers)
+                table_widget.setRowCount(len(table_data) - 1)  # Number of data rows excluding header
+                table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+                table_widget.setFont(QFont("Arial", 10))
+                table_widget.setStyleSheet(
+                    "QTableWidget { background-color: #f4f4f4; color: black; border: none; } "
+                    "QHeaderView::section { background-color: #d4d4d4; color: black; padding: 5px; border: none; } "
+                    "QTableWidget::item { padding: 5px; color: black;}"
+                )
+
+                for row_idx, row_data in enumerate(table_data[2:], 1):  # Start from index 1 to skip header
+                    for col_idx, col_value in enumerate(row_data):
+                        item = QTableWidgetItem(str(col_value))
+                        item.setFlags(Qt.ItemIsEnabled)
+                        table_widget.setItem(row_idx - 1, col_idx, item)  # row_idx - 1 because of skipping header
+
+                layout.addWidget(table_widget)
+            return
+        if data:
+            table_widget = QTableWidget()
+            for row_idx, row_data in enumerate(data):
+                headers = row_data.keys()
+                table_widget.setColumnCount(len(headers))
+                table_widget.setHorizontalHeaderLabels(headers)
+                table_widget.setRowCount(len(data))
+
+                table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+                table_widget.setFont(QFont("Arial", 10))
+                table_widget.setStyleSheet(
+                    "QTableWidget { background-color: #f4f4f4; color: black; border: none; } QHeaderView::section { background-color: #d4d4d4; padding: 5px; border: none; } QTableWidget::item { padding: 5px; }")
+                for col_idx, (col_name, col_value) in enumerate(row_data.items()):
+                    item = QTableWidgetItem(str(col_value))
+                    item.setFlags(Qt.ItemIsEnabled)
+                    table_widget.setItem(row_idx, col_idx, item)

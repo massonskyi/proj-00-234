@@ -1,13 +1,19 @@
 import sys
 import os
+
+import PyPDF2
+import pandas as pd
+import pdfplumber
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QAction
 from utils.s2f import load_mdth_file
+from docx import Document
 
 
 class FileManager(QtWidgets.QWidget):
     file_selected = Signal(list)
+    filepath_selected = Signal(str)
 
     def __init__(self, path: str = None, parent=None):
         super().__init__(parent)
@@ -58,14 +64,40 @@ class FileManager(QtWidgets.QWidget):
     def select_file(self, index):
         file_path = self.model.filePath(index)
         if file_path:
+            self.filepath_selected.emit(file_path)
             data = []
-            if file_path.lower().endswith('.mdth'):
+            file_ext = file_path.lower()
+
+            if file_ext.endswith('.mdth'):
                 data = [{"mdth": load_mdth_file(file_path)}]
-            elif file_path.lower().endswith(('.png', '.jpg', '.bmp')):
+            elif file_ext.endswith(('.png', '.jpg', '.bmp')):
                 data = [{'image_path': file_path}]
+            elif file_ext.endswith('.csv'):
+                data = pd.read_csv(file_path).to_dict(orient='records')
+            elif file_ext.endswith('.xlsx') or file_ext.endswith('.xls'):
+                data = pd.read_excel(file_path).to_dict(orient='records')
+            elif file_ext.endswith('.docx'):
+                doc = Document(file_path)
+                data_temp = []
+                for table in doc.tables:
+                    table_data = []
+                    for row in table.rows:
+                        row_data = []
+                        for cell in row.cells:
+                            row_data.append(cell.text)
+                        table_data.append(row_data)
+                    data_temp.append(table_data)
+                data = [{"dataword": data_temp}]
+
+            elif file_ext.endswith('.pdf'):
+                # Открываем PDF-файл с помощью pdfplumber
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        data.append(page.extract_text())
             else:
                 with open(file_path, 'r') as f:
                     data = [line.strip() for line in f.readlines()]
+
             self.file_selected.emit(data)
 
     def open_menu(self, position):

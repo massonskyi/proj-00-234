@@ -83,7 +83,7 @@ def save_to_excel(data: List, textboxes: List, result_data: List[List[str]]) -> 
         try:
             with pd.ExcelWriter('Untitled.xlsx') as writer:
                 df_data.to_excel(writer, sheet_name='Data', index=False)
-                if df_result:
+                if df_result is not None:
                     df_result.to_excel(writer, sheet_name='Result Data', index=False)
         except Exception as e:
             return False, Exception(e)
@@ -127,24 +127,30 @@ def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [b
 
     pdf = PDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
 
-    pdf.set_font("Arial", 'B', 12)
+
+    font_path = './fonts/DejaVuSans.ttf'
+    bold_dejavu_path = './fonts/DejaVuSansBold.ttf'
+
+    pdf.add_font('DejaVu', '', font_path, uni=True)
+    pdf.add_font('DejaVu-Bold', '', bold_dejavu_path, uni=True)
+    pdf.set_font('DejaVu-Bold', '', 12)
+
     pdf.cell(200, 10, txt="Data from Textboxes", ln=True, align='C')
 
     for i, item in enumerate(data_prt):
         text = f"{item.get('idx', '')} | {item.get('name', '')} | {textboxes_ptr[i].text()}"
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
+        pdf.set_font('DejaVu', '', 12)
+        pdf.multi_cell(0, 10, txt=text)
 
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 12)
+    pdf.set_font('DejaVu-Bold', '', 12)
     pdf.cell(200, 10, txt="Result Data", ln=True, align='C')
 
     for row in result_data:
         text = " | ".join(row)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, txt=text.encode('latin-1', 'replace').decode('latin-1'))
+        pdf.set_font('DejaVu', '', 12)
+        pdf.multi_cell(0, 10, txt=text)
 
     try:
         pdf.output("Untitled.pdf")
@@ -152,7 +158,6 @@ def save_to_pdf(data: List, textboxes: List, result_data: List[List[str]]) -> [b
         return False, Exception(e)
     else:
         return True, None
-
 
 def save_to_csv(data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """

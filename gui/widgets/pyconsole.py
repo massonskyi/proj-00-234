@@ -1,3 +1,4 @@
+import os
 import sys
 
 from PySide6.QtGui import QTextCursor
@@ -16,9 +17,6 @@ class ConsoleWidget(QPlainTextEdit):
         self.number_of_lines = 0
         self.historyIndex = -1
 
-        self.prompt_set = 0
-        self.prompt_style = ['>>> ', f"[{self.number_of_lines}]: "]
-        self.insertPlainText(self.prompt_style[self.prompt_set])
         self.interpreter = code.InteractiveConsole(locals={})
         self.display_system_info()
 
@@ -27,13 +25,18 @@ class ConsoleWidget(QPlainTextEdit):
             f"Version: {sys.version}\n"
             f"Name: {sys.thread_info}\n"
         )
-        self.insertPlainText(system_info + "\n")
+        self.number_of_lines += 1
+        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.number_of_lines += 1
+        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.insertPlainText(system_info + self.prompt_style)
+
 
     def keyPressEvent(self, event):
         if event.key() in [Qt.Key_Return, Qt.Key_Enter]:
             cursor = self.textCursor()
             cursor.movePosition(QTextCursor.MoveOperation.End)
-            line = cursor.block().text()[len(self.prompt_style[self.prompt_set]):]
+            line = cursor.block().text()[len(self.prompt_style):]
             self.history.append(line)
             self.historyIndex = -1
             self.run_command(line)
@@ -53,7 +56,7 @@ class ConsoleWidget(QPlainTextEdit):
         cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
         cursor.movePosition(QTextCursor.MoveOperation.EndOfLine, QTextCursor.MoveMode.KeepAnchor)
         cursor.removeSelectedText()
-        cursor.insertText(self.prompt_style[1] + text)
+        cursor.insertText(self.prompt_style + text)
 
     def run_command(self, command):
         self.insertPlainText('\n')
@@ -66,19 +69,16 @@ class ConsoleWidget(QPlainTextEdit):
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
-            self.number_of_lines += 1
-            self.update_prompt()
 
-        self.insertPlainText(self.prompt_style[self.prompt_set])
+        self.number_of_lines += 1
+        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.insertPlainText(self.prompt_style)
 
     def write(self, text):
         self.insertPlainText(text)
 
     def flush(self):
         pass
-
-    def update_prompt(self):
-        self.prompt_style = ['>>> ', f"[{self.number_of_lines}] "]
 
 
 if __name__ == '__main__':
