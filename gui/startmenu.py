@@ -11,6 +11,7 @@ from gui.widgets.customtitlebar import CustomTitleBar
 from utils.loaders import load_icon
 
 
+
 class Ui_StartMenu(QMainWindow):
     """
     Стартовое меню с вариантами выбора.
@@ -77,10 +78,12 @@ class Ui_StartMenu(QMainWindow):
 
         self.create_project_button = self.create_button("Создать новый проект", self.show_create_project_form,
                                                         "#4CAF50")
+        self.create_project_button.setFixedWidth(200)
         self.open_project_button = self.create_button("Выбрать проект", self.show_open_project_form,
                                                       "#008CBA")
-        # self.settings_button = self.create_button("Настройки", self.show_settings_form, "#5a9c9b")
+        self.open_project_button.setFixedWidth(200)
         self.exit_button = self.create_button("Выход", self.close_window, "#5a9c9b")
+        self.exit_button.setFixedWidth(200)
         initial_layout = QtWidgets.QVBoxLayout()
         initial_layout.addWidget(self.create_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
         initial_layout.addWidget(self.open_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
@@ -121,12 +124,14 @@ class Ui_StartMenu(QMainWindow):
         self.file_type_combobox = QtWidgets.QComboBox()
         self.file_type_combobox.addItems(["Все файлы (*)", "Текстовые файлы (*.txt)", "Python файлы (*.py)"])
 
-        self.create_project_button = self.create_button("Создать проект", self.create_project_with_form)
+        self.create_project_button = self.create_button("Создать проект", self.create_project_with_form, "#618578")
+        back_button = self.create_button("Назад", self.back_to_start_form, "#746185")
 
         layout.addRow("Директория:", self.directory_input)
         layout.addRow("", self.directory_button)
         layout.addRow("Тип файла:", self.file_type_combobox)
         layout.addRow("", self.create_project_button)
+        layout.addRow("", back_button)
 
         self.create_project_form.setLayout(layout)
         self.stacked_widget.addWidget(self.create_project_form)
@@ -137,9 +142,11 @@ class Ui_StartMenu(QMainWindow):
 
         self.file_input = self.setup_line_edit()
         self.open_button = self.create_button("Открыть проект", self.open_project, "#008CBA")
+        back_button = self.create_button("Назад", self.back_to_start_form, "#746185")
 
         layout.addRow("Файл:", self.file_input)
         layout.addRow("", self.open_button)
+        layout.addRow("", back_button)
 
         self.open_project_form.setLayout(layout)
         self.stacked_widget.addWidget(self.open_project_form)
@@ -162,6 +169,13 @@ class Ui_StartMenu(QMainWindow):
         :return: None
         """
         self.stacked_widget.setCurrentWidget(self.open_project_form)
+
+    def back_to_start_form(self) -> None:
+        """
+        Navigates back to the start menu.
+        :return: None
+        """
+        self.stacked_widget.setCurrentIndex(0)
 
     def select_directory(self) -> None:
         """

@@ -63,7 +63,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.current_open_file = ''
         self.setupUi(self, *args, **kwargs)
         callbacks = self.configureCallbacks()
-        self.title_bar = CustomTitleBar(self.icons,callbacks=callbacks, parent=self)
+        self.title_bar = CustomTitleBar(self.icons, callbacks=callbacks, parent=self)
         self.setMenuWidget(self.title_bar)
 
     def configureCallbacks(self) -> dict:

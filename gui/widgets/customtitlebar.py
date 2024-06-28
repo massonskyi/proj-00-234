@@ -23,18 +23,18 @@ class MyProxyStyle(QProxyStyle):
 class CustomTitleBar(QWidget):
     def __init__(self, icons, callbacks, parent: QWidget | QMainWindow = None):
         super().__init__(parent)
+        self.__main_window = parent
         self.maximize_button = None
         self.file_path_label = None
         self.callbacks = callbacks
         self.setMouseTracking(True)
-        self.current_workspace = self.parent().current_workspace = os.path.basename(self.parent().current_workspace)
+        self.current_workspace = self.parent().current_workspace
         self.current_open_file = self.parent().current_open_file
         self._startPos = None
         self._clickPos = None
         self._dragPos = None
         self.icons = icons
         self.style = MyProxyStyle('Fusion')    # The proxy style should be based on an existing style,
-
         self.saves_icons = {
             'save_word': load_icon('./assets/save2/sword.png'),
             'save_excel': load_icon('./assets/save2/sexcel.png'),
@@ -78,33 +78,27 @@ class CustomTitleBar(QWidget):
         layout.addWidget(title_label)
 
         # if isinstance(self.parent(), QMainWindow) and self.parent().objectName() == "MainWindow":
-        self.file_path_label = QLabel(
-            f"{os.path.basename(self.parent().current_open_file)} [{self.parent().current_workspace}]")
-        self.file_path_label.setObjectName("file_path_label")
-        self.file_path_label.setStyleSheet("color: #7097ba")
-        self.file_path_label.setFixedWidth(
-            QLabel(f"{os.path.basename(self.parent().current_open_file)} [{self.parent().current_workspace}]").width())
-        self.file_path_label.setAlignment(Qt.AlignCenter)
         menu_widget = self.setupUiMenu()
         menu_widget.setFixedWidth(150)
+
         layout.addWidget(menu_widget)
         layout.addStretch()
-        if not self.parent().width() < 550:
+        if self.__main_window.width() > 550:
             self.file_path_label = QLabel(
-                f"{os.path.basename(self.parent().current_open_file)} [{self.parent().current_workspace}]")
+                f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]")
             self.file_path_label.setObjectName("file_path_label")
             self.file_path_label.setStyleSheet("color: #7097ba")
             self.file_path_label.setFixedWidth(
                 QLabel(
-                    f"{os.path.basename(self.parent().current_open_file)} [{self.parent().current_workspace}]").width())
+                    f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]").width())
             self.file_path_label.setAlignment(Qt.AlignCenter)
 
-        layout.addWidget(self.file_path_label)
+            layout.addWidget(self.file_path_label)
         layout.addStretch()
 
         minimize_button = QPushButton(icon=self.icons.get("minimize"))
         minimize_button.setFixedSize(55, 55)
-        minimize_button.clicked.connect(self.parent().showMinimized)
+        minimize_button.clicked.connect(self.__main_window.showMinimized)
         minimize_button.setStyleSheet(button_style)
         layout.addWidget(minimize_button)
 
@@ -117,25 +111,22 @@ class CustomTitleBar(QWidget):
 
         close_button = QPushButton(icon=self.icons.get("close"))
         close_button.setFixedSize(55, 55)
-        close_button.clicked.connect(self.parent().close)  # Close window
+        close_button.clicked.connect(self.__main_window.close)  # Close window
         close_button.setStyleSheet(button_style)
         layout.addWidget(close_button)
-
         self.setLayout(layout)
 
     def update_current_open_file(self, filepath):
         self.current_open_file = filepath
-        self.file_path_label.setText(f"{os.path.basename(self.current_open_file)} [{self.parent().current_workspace}]")
-
+        self.file_path_label.setText(f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]")
         self.file_path_label.setFixedWidth(
-            QLabel(f"{os.path.basename(self.current_open_file)} [{self.parent().current_workspace}]").width())
+            QLabel(f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]").width())
 
     def update_current_workspace(self, workspace):
         self.current_workspace = workspace
-        self.file_path_label.setText(f"{os.path.basename(self.current_open_file)} [{self.parent().current_workspace}]")
-
+        self.file_path_label.setText(f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]")
         self.file_path_label.setFixedWidth(
-            QLabel(f"{os.path.basename(self.current_open_file)} [{self.parent().current_workspace}]").width())
+            QLabel(f"{os.path.basename(self.__main_window.current_open_file)} [{self.__main_window.current_workspace}]").width())
 
     def toggle_maximized(self):
         if self.parent().isMaximized():
