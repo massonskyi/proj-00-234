@@ -9,6 +9,7 @@ from PySide6.QtGui import QIntValidator, QPixmap, QFont, QTextCursor, QTextCharF
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QLabel, QFrame, QGridLayout, QLineEdit, \
     QTextEdit, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QPushButton
 
+from gui.widgets.custontextedit import CustomTextEdit
 from utils.loaders import load_icon
 from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, save_to_json, save_to_html, save_to_txt, \
     save_to_xml
@@ -76,7 +77,7 @@ class ScrollableContainer(QWidget):
 
         self.calculate_button = QPushButton("Начать расчет")
         self.calculate_button.clicked.connect(self.toggle_result_block)
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
         layout.addWidget(self.result_table)
         layout.addWidget(self.reset_button)
         widget = QFrame(self)
@@ -315,7 +316,8 @@ class ScrollableContainer(QWidget):
 
         self.show_tests.emit(self.name_textboxes)
         layout.addLayout(grid_layout)
-
+    def set_scrollbar_value(self, object):
+        self.scroll_area.ensureWidgetVisible(object)
     def eventFilter(self, source, event):
         if not isinstance(event, QEvent):
             return False
@@ -380,13 +382,8 @@ class ScrollableContainer(QWidget):
             self.scroll_layout.addWidget(label)
             return
         if not self.data:
-            self.text_edit = QTextEdit()
-            self.text_edit.setObjectName("base")
-            self.text_edit.setReadOnly(False)
-            self.text_edit.setFont(QFont("Arial", 12))
-            self.text_edit.setStyleSheet(
-                "QTextEdit { border: none; background-color: #f4f4f4; color: black; padding: 10px; }")
-            self.scroll_layout.addWidget(self.text_edit)
+            custom_text_edit = CustomTextEdit()
+            self.scroll_layout.addWidget(custom_text_edit)
             return
 
         if self.data and isinstance(self.data, list):
@@ -402,10 +399,7 @@ class ScrollableContainer(QWidget):
                 self.load_text_content(self.scroll_layout)
 
     def load_text_content(self, layout):
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(False)
-        text_edit.setFont(QFont("Arial", 12))
-        text_edit.setStyleSheet("QTextEdit { border: none; background-color: #f4f4f4; color: black; padding: 10px; }")
+        text_edit = CustomTextEdit()
 
         # for item in self.data:
         #     if self.is_json(item):
@@ -417,6 +411,8 @@ class ScrollableContainer(QWidget):
         #     else:
 
         self.format_txt(text_edit, self.data)
+        text_edit.set_cursor_position(0)
+        text_edit.text_edit.verticalScrollBar().setValue(0)
         layout.addWidget(text_edit)
 
     def is_json(self, text):

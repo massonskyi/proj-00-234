@@ -1,13 +1,17 @@
 import json
 import os
 
-from PySide6 import QtWidgets
-from PySide6.QtWidgets import QMessageBox
+from PySide6 import QtWidgets, QtCore
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget
 
 from gui.main_window import Ui_MainWindow
+from gui.widgets.customtitlebar import CustomTitleBar
+from utils.loaders import load_icon
 
 
-class Ui_StartMenu(QtWidgets.QWidget):
+class Ui_StartMenu(QMainWindow):
     """
     Стартовое меню с вариантами выбора.
     """
@@ -17,12 +21,13 @@ class Ui_StartMenu(QtWidgets.QWidget):
         Initializes the start menu.
         """
         super().__init__()
+        self.setMaximumWidth(600)
+        self.setMaximumHeight(800)
         self.main_window = None
         self.open_button = None
         self.file_button = None
         self.file_input = None
         self.open_project_form = None
-        self.create_button = None
         self.directory_button = None
         self.directory_input = None
         self.file_type_combobox = None
@@ -32,76 +37,112 @@ class Ui_StartMenu(QtWidgets.QWidget):
         self.setWindowTitle('Начало')
         self.setGeometry(100, 100, 400, 300)
         self.stacked_widget = QtWidgets.QStackedWidget()
+
+        self.icons = {
+            'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
+            'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
+            'open_full_folder': load_icon('./assets/folder/open_full_folder.png'),
+            'bash': load_icon('./assets/console/bash.png'),
+            'py': load_icon('./assets/console/py.png'),
+            'test_btn': load_icon('./assets/test/button.png'),
+            'success_question': load_icon('./assets/test/qs.png'),
+            'failed_question': load_icon('./assets/test/qc.png'),
+            'process_question': load_icon('./assets/test/qp.png'),
+            'menu_exit': load_icon('./assets/main/menu_exit.png'),
+            'menu_file': load_icon('./assets/main/menu_file.png'),
+            'menu_new': load_icon('./assets/main/menu_new.png'),
+            'menu_new_file': load_icon('./assets/main/menu_new_file.png'),
+            'menu_new_project': load_icon('./assets/main/menu_new_project.png'),
+            'menu_open': load_icon('./assets/main/menu_open.png'),
+            'menu_open_file': load_icon('./assets/main/menu_open_file.png'),
+            'menu_open_project': load_icon('./assets/main/menu_open_project.png'),
+            'menu_save': load_icon('./assets/main/menu_save.png'),
+            'menu_save_as': load_icon('./assets/main/menu_save_as.png'),
+            'menu_txt': load_icon('./assets/main/menu_txt.png'),
+            'main_menu': load_icon('./assets/main/main_menu.png'),
+            'button': load_icon('./assets/default/button.png'),
+            'minimize': load_icon('./assets/title/minimize.png'),
+            'maximize': load_icon('./assets/title/maximize.png'),
+            'close': load_icon('./assets/title/close.png'),
+            'title_main': load_icon('./assets/title_main.png'),
+        }
+
         self.setupUi()
 
     def setupUi(self) -> None:
-        """
-        Sets up the user interface.
-        :return: None
-        """
-        # Create the initial layout with buttons
+        self.setWindowTitle('project-00-234')
+        self.setGeometry(100, 100, 400, 800)
+        self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
+        self.main_window = Ui_MainWindow(**{'path': f"{os.path.dirname(__file__)}", 'ft': "*"})
+        self.title_bar = CustomTitleBar(self.icons,self.main_window, self)
+        self.setMenuWidget(self.title_bar)
+        self.create_project_button = self.create_button("Создать новый проект", self.show_create_project_form,
+                                                        "#4CAF50")
+        self.open_project_button = self.create_button("Выбрать проект", self.show_open_project_form,
+                                                      "#008CBA")
+        # self.settings_button = self.create_button("Настройки", self.show_settings_form, "#5a9c9b")
         initial_layout = QtWidgets.QVBoxLayout()
-
-        self.create_project_button = QtWidgets.QPushButton("Создать новый проект")
-        self.open_project_button = QtWidgets.QPushButton("Выбрать проект")
-
-        self.create_project_button.clicked.connect(self.show_create_project_form)
-        self.open_project_button.clicked.connect(self.show_open_project_form)
-
-        initial_layout.addWidget(self.create_project_button)
-        initial_layout.addWidget(self.open_project_button)
+        initial_layout.addWidget(self.create_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
+        initial_layout.addWidget(self.open_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
 
         initial_widget = QtWidgets.QWidget()
         initial_widget.setLayout(initial_layout)
-
-        # Add the initial widget to the stacked widget
         self.stacked_widget.addWidget(initial_widget)
 
-        # Create the create project form
-        self.create_project_form = QtWidgets.QWidget()
-        create_form_layout = QtWidgets.QFormLayout()
-        self.directory_input = QtWidgets.QLineEdit()
-        self.directory_input.setReadOnly(True)
-        self.directory_button = QtWidgets.QPushButton("Выбрать директорию")
-        self.directory_button.clicked.connect(self.select_directory)
+        self.setup_create_project_form()
+        self.setup_open_project_form()
 
-        self.file_type_combobox = QtWidgets.QComboBox()
-        self.file_type_combobox.addItems(["Все файлы (*)", "Текстовые файлы (*.txt)", "Python файлы (*.py)"])
-
-        self.create_button = QtWidgets.QPushButton("Создать проект")
-        self.create_button.clicked.connect(self.create_project_with_form)
-
-        create_form_layout.addRow("Директория:", self.directory_input)
-        create_form_layout.addRow("", self.directory_button)
-        create_form_layout.addRow("Тип файла:", self.file_type_combobox)
-        create_form_layout.addRow("", self.create_button)
-
-        self.create_project_form.setLayout(create_form_layout)
-        self.stacked_widget.addWidget(self.create_project_form)
-
-        # Create the open project form
-        self.open_project_form = QtWidgets.QWidget()
-        open_form_layout = QtWidgets.QFormLayout()
-        self.file_input = QtWidgets.QLineEdit()
-        self.file_input.setReadOnly(True)
-        # self.file_button = QtWidgets.QPushButton("Выбрать файл")
-        # self.file_button.clicked.connect(self.select_file)
-
-        self.open_button = QtWidgets.QPushButton("Открыть проект")
-        self.open_button.clicked.connect(self.open_project)
-
-        open_form_layout.addRow("Файл:", self.file_input)
-        # open_form_layout.addRow("", self.file_button)
-        open_form_layout.addRow("", self.open_button)
-
-        self.open_project_form.setLayout(open_form_layout)
-        self.stacked_widget.addWidget(self.open_project_form)
-
-        # Set the layout for the StartMenu
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.stacked_widget)
         self.setLayout(main_layout)
 
+    def create_button(self, text, on_click, color=None) -> QtWidgets.QPushButton:
+        button = QtWidgets.QPushButton(text)
+        button.clicked.connect(on_click)
+        if color:
+            button.setStyleSheet(f"background-color: {color}; color: white;")
+        button.setIcon(self.icons.get('button'))  # Replace "icon.png" with your icon file path
+        button.setIconSize(QtCore.QSize(24, 24))  # Adjust icon size as needed
+        button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        return button
+
+    def setup_create_project_form(self) -> None:
+        self.create_project_form = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout()
+
+        self.directory_input = self.setup_line_edit()
+        self.directory_button = self.create_button("Выбрать директорию", self.select_directory, "#008CBA")
+
+        self.file_type_combobox = QtWidgets.QComboBox()
+        self.file_type_combobox.addItems(["Все файлы (*)", "Текстовые файлы (*.txt)", "Python файлы (*.py)"])
+
+        self.create_project_button = self.create_button("Создать проект", self.create_project_with_form)
+
+        layout.addRow("Директория:", self.directory_input)
+        layout.addRow("", self.directory_button)
+        layout.addRow("Тип файла:", self.file_type_combobox)
+        layout.addRow("", self.create_project_button)
+
+        self.create_project_form.setLayout(layout)
+        self.stacked_widget.addWidget(self.create_project_form)
+
+    def setup_open_project_form(self) -> None:
+        self.open_project_form = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout()
+
+        self.file_input = self.setup_line_edit()
+        self.open_button = self.create_button("Открыть проект", self.open_project, "#008CBA")
+
+        layout.addRow("Файл:", self.file_input)
+        layout.addRow("", self.open_button)
+
+        self.open_project_form.setLayout(layout)
+        self.stacked_widget.addWidget(self.open_project_form)
+
+    def setup_line_edit(self) -> QtWidgets.QLineEdit:
+        line_edit = QtWidgets.QLineEdit()
+        line_edit.setReadOnly(True)
+        return line_edit
     def show_create_project_form(self) -> None:
         """
         Shows the create project form.
@@ -191,10 +232,28 @@ class Ui_StartMenu(QtWidgets.QWidget):
         dir_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
         if dir_path:
             projmd_file = os.path.join(dir_path, "proj.projmd")
-            if os.path.isfile(projmd_file):
+            config_file = os.path.join(dir_path,  "configuration_config_mdt.json")
+            if os.path.exists(projmd_file):
                 with open(projmd_file, 'r') as f:
                     project_data = json.load(f)
+            else:
+                project_data = {
+                    "directory": dir_path,
+                    "file_type": "*"
+                }
 
+                with open(projmd_file, 'w') as f:
+                    json.dump(project_data, f, indent=4)
+
+            if not os.path.exists(config_file):
+                from utils.configuration_config_mdt import ConfigurationMDTH
+                try:
+                    ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", str(e))
+                    return
+            self.check_main_dirs(dir_path)
+            if os.path.exists(projmd_file) and os.path.exists(config_file):
                 self.open_main_window(project_data['directory'], project_data.get('file_type'))
 
     def open_main_window(self, project_path, file_type=None) -> None:

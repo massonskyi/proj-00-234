@@ -12,12 +12,20 @@ class CommandThread(QThread):
     outputReceived = Signal(str)
     commandFinished = Signal()
 
-    def __init__(self, command):
+    def __init__(self, command, cwd=None):
         super().__init__()
         self.command = command
+        self.cwd = cwd
 
     def run(self):
-        process = subprocess.Popen(self.command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            self.command,
+            shell=True,
+            cwd=self.cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
         for line in iter(process.stdout.readline, ''):
             self.outputReceived.emit(line)
         for line in iter(process.stderr.readline, ''):
@@ -27,13 +35,13 @@ class CommandThread(QThread):
         process.wait()
         self.commandFinished.emit()
 
-
 class BashConsoleWidget(QPlainTextEdit):
-    def __init__(self, parent=None):
+    def __init__(self, path, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Bash Console')
         self.setReadOnly(False)
-        self.prompt = f'{os.getcwd()}$ '
+        self.cwd = path
+        self.prompt = f'{path}$ '
         self.insertPlainText(self.prompt)
         self.commandThread = None
         self.display_system_info()
@@ -60,12 +68,26 @@ class BashConsoleWidget(QPlainTextEdit):
             super().keyPressEvent(event)
 
     def run_command(self, command):
-        self.insertPlainText('\n')
-        self.setReadOnly(True)
-        self.commandThread = CommandThread(command)
-        self.commandThread.outputReceived.connect(self.append_output)
-        self.commandThread.commandFinished.connect(self.command_finished)
-        self.commandThread.start()
+        if command.strip().startswith('cd'):
+            self.change_directory(command.strip())
+        else:
+            self.insertPlainText('\n')
+            self.setReadOnly(True)
+            self.commandThread = CommandThread(command, self.cwd)
+            self.commandThread.outputReceived.connect(self.append_output)
+            self.commandThread.commandFinished.connect(self.command_finished)
+            self.commandThread.start()
+
+    def change_directory(self, command):
+        try:
+            path = command[3:].strip()
+            os.chdir(path)
+            self.cwd = os.getcwd()
+            self.prompt = f'{self.cwd}$ '
+            self.insertPlainText(f'\nChanged directory to {self.cwd}\n')
+        except Exception as e:
+            self.insertPlainText(f'\nError: {e}\n')
+        self.insertPlainText(self.prompt)
 
     def append_output(self, text):
         self.insertPlainText(text)
@@ -73,3 +95,4 @@ class BashConsoleWidget(QPlainTextEdit):
     def command_finished(self):
         self.insertPlainText(self.prompt)
         self.setReadOnly(False)
+

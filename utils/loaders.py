@@ -10,6 +10,6 @@ def load_icon(filename: str) -> QIcon:
     """
     pixmap = QPixmap(filename)
     if not pixmap.isNull():
-        pixmap = pixmap.scaled(75, 75, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        pixmap = pixmap.scaled(30, 30, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         return QIcon(pixmap)
     return QIcon()  # Return an empty icon if loading fails

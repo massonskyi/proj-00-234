@@ -70,7 +70,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'menu_save_as': load_icon('./assets/main/menu_save_as.png'),
             'menu_txt': load_icon('./assets/main/menu_txt.png'),
             'main_menu': load_icon('./assets/main/main_menu.png'),
-
+            'minimize': load_icon('./assets/title/minimize.png'),
+            'maximize': load_icon('./assets/title/maximize.png'),
+            'close': load_icon('./assets/title/close.png'),
+            'title_main': load_icon('./assets/title_main.png'),
         }
 
         self.saves_icons = {
@@ -103,12 +106,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.centralwidget.setObjectName("centralwidget")
 
         self.container = self.setupUiMainFrame()
-        self.bash_console = BashConsoleWidget(self.container)
+        self.bash_console = BashConsoleWidget(self.current_workspace, self.container)
 
         python_installed = self.check_python_installed()
 
         if python_installed:
-            self.pyconsole = ConsoleWidget(self.container)
+            self.pyconsole = ConsoleWidget(self.current_workspace, self.container)
             self.pyconsole.setVisible(False)
         else:
             self.pyconsole = None
@@ -184,7 +187,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                              self.icons.get('failed_question'),
                                              self.icons.get('process_question')],
                                       parent=self.left_container)
-
+        self.test_widget.set_scrollbar_value.connect(self.container.set_scrollbar_value)
         self.container.get_textboxes.connect(self.test_widget.updateIcons)
         self.container.show_tests.connect(self.test_widget.loadTests)
         self.file_widget = FileManager(kwargs.get('path'), _MainWindow)

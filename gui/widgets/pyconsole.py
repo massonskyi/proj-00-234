@@ -9,8 +9,9 @@ import threading
 
 
 class ConsoleWidget(QPlainTextEdit):
-    def __init__(self, parent=None):
+    def __init__(self, path, parent=None):
         super().__init__(parent)
+        self.path = path
         self.setWindowTitle('Custom Console')
         self.setReadOnly(False)
         self.history = []
@@ -26,9 +27,9 @@ class ConsoleWidget(QPlainTextEdit):
             f"Name: {sys.thread_info}\n"
         )
         self.number_of_lines += 1
-        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.prompt_style = f"{self.path} [{self.number_of_lines}]$ "
         self.number_of_lines += 1
-        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.prompt_style = f"{self.path} [{self.number_of_lines}]$ "
         self.insertPlainText(system_info + self.prompt_style)
 
 
@@ -71,7 +72,7 @@ class ConsoleWidget(QPlainTextEdit):
             sys.stderr = old_stderr
 
         self.number_of_lines += 1
-        self.prompt_style = f"{os.getcwd()} [{self.number_of_lines}]$ "
+        self.prompt_style = f"{self.path} [{self.number_of_lines}]$ "
         self.insertPlainText(self.prompt_style)
 
     def write(self, text):
@@ -80,14 +81,3 @@ class ConsoleWidget(QPlainTextEdit):
     def flush(self):
         pass
 
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = QWidget()
-    layout = QVBoxLayout()
-    console = ConsoleWidget()
-    layout.addWidget(console)
-    window.setLayout(layout)
-    window.setWindowTitle('PySide6 Console Widget')
-    window.show()
-    sys.exit(app.exec())

@@ -442,6 +442,10 @@ class ConfigurationMDTH:
         return cls
 
     @classmethod
-    def save_as_json(cls):
-        with open(cls.file, 'w', encoding='utf-8') as f:
-            json.dump(cls.upload, f, ensure_ascii=False, indent=4)
+    def save_as_json(cls, path=None):
+        if not path:
+            with open(cls.file, 'w', encoding='utf-8') as f:
+                json.dump(cls.upload, f, ensure_ascii=False, indent=4)
+        else:
+            with open(path + cls.file, 'w', encoding='utf-8') as f:
+                json.dump(cls.upload, f, ensure_ascii=False, indent=4)
