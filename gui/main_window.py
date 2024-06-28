@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFra
     QMessageBox, QMenuBar, QLabel
 
 from gui.widgets.bashconsole import BashConsoleWidget
+from gui.widgets.customtitlebar import CustomTitleBar
 from gui.widgets.filemanager import FileManager
 from gui.widgets.pyconsole import ConsoleWidget
 from gui.widgets.scrollcontainter import ScrollableContainer
@@ -20,9 +21,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     Main window class
     """
     position_widgets = {
-        "main_container": [0, 1, 2, 1],
-        "right_toolbar": [0, 2, 2, 1],
-        "left_toolbar": [0, 0],
+        "title_bar": [0, 0, 1, 2],
+        "main_container": [1, 1, 2, 1],
+        "right_toolbar": [1, 2, 2, 1],
+        "left_toolbar": [1, 0],
     }
 
     def __init__(self, parent: QtWidgets.QWidget = None, *args, **kwargs) -> None:
@@ -30,6 +32,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.button_test = None
+        self.button_pyconsole = None
+        self.button_bash = None
+        self.left_layout = None
+        self.saves_icons = None
+        self.icons = None
+        self.buttons_name = None
+        self.splitter_block = None
+        self.setupIcons()
+        self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
+
         self.splitter = None
         self.left_container = None
         self.current_workspace = kwargs.get("path")
@@ -47,7 +60,28 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.gridLayout = None
         self.centralwidget = None
         self.assets_path = "./assets"
+        self.current_open_file = ''
+        self.setupUi(self, *args, **kwargs)
+        callbacks = self.configureCallbacks()
+        self.title_bar = CustomTitleBar(self.icons,callbacks=callbacks, parent=self)
+        self.setMenuWidget(self.title_bar)
 
+    def configureCallbacks(self) -> dict:
+        callbacks = {
+            'new_file': self.new_file,
+            'open_file': self.open_file,
+            'save_file': self.save_file,
+            'new_project': self.new_project,
+            'open_project': self.open_project,
+            'new_py_file': self.new_python_file,
+            'new_txt_file': self.new_plain_text,
+            'save': self.container.save,
+            'close': self.close,
+            'open_file_explorer': self.open_file_explorer,
+            'open_project_explorer': self.open_project
+        }
+        return callbacks
+    def setupIcons(self) -> None:
         self.icons = {
             'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
             'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
@@ -75,7 +109,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'close': load_icon('./assets/title/close.png'),
             'title_main': load_icon('./assets/title_main.png'),
         }
-
         self.saves_icons = {
             'save_word': load_icon('./assets/save2/sword.png'),
             'save_excel': load_icon('./assets/save2/sexcel.png'),
@@ -86,6 +119,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'save_txt': load_icon('./assets/save2/stxt.png'),
             'save_xml': load_icon('./assets/save2/sxml.png'),
         }
+
         self.buttons_name = {
             'save_word': 'Сохранить как Word',
             'save_excel': 'Сохранить как Excel',
@@ -96,12 +130,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'save_txt': 'Сохранить как TXT',
             'save_xml': 'Сохранить как XML',
         }
-        self.current_open_file = ''
-        self.setupUi(self, *args, **kwargs)
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
         _MainWindow.setObjectName("MainWindow")
         _MainWindow.resize(800, 600)
+
         self.centralwidget = QtWidgets.QWidget(_MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
@@ -177,11 +210,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Add buttons to the toolbar layout
         self.left_toolbar_layout.addWidget(self.button_hide_file_widget)
-        self.left_toolbar_layout.addWidget(self.button_bash)
-        self.left_toolbar_layout.addWidget(self.button_pyconsole)
         self.left_toolbar_layout.addWidget(self.button_test)
 
-        # Create splitter for FileManager and TestWidget
+        self.left_toolbar_layout.addStretch()
+        self.left_toolbar_layout.addWidget(self.button_pyconsole)
+        self.left_toolbar_layout.addWidget(self.button_bash)
+
         self.left_toolbar_splitter = QSplitter(QtCore.Qt.Vertical)
         self.test_widget = TestWidget(icons=[self.icons.get('success_question'),
                                              self.icons.get('failed_question'),
@@ -247,8 +281,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.adjust_container_sizes_()
 
-        menu_bar = self.setupUiMenu()
-        _MainWindow.setMenuBar(menu_bar)
+        # menu_bar = self.setupUiMenu()
+        # _MainWindow.setMenuBar(menu_bar)
         _MainWindow.setWindowTitle("Main Window")
 
     def check_python_installed(self):
@@ -260,159 +294,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         except FileNotFoundError:
             return False
 
-    def setupUiMenu(self) -> QtWidgets.QMenuBar:
-        """
-        Setup the main window menu
-        :return: QtWidgets.QMenuBar
-        """
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.title_bar.hide_file_path_label()
 
-        def configure_menu(menubar: QtWidgets.QMenuBar) -> None:
-            new_menu = QtWidgets.QMenu("New", self)
-            new_menu.setIcon(self.icons.get('menu_new'))
-            new_file_action = QAction(text="New File", icon=self.icons.get('menu_new_file'), parent=self)
-            new_file_action.triggered.connect(self.new_file)
-            new_project_action = QAction(text="New Project", icon=self.icons.get('menu_new_project'), parent=self)
-            new_project_action.triggered.connect(self.new_project)
-
-            if self.pyconsole:
-                new_python_action = QAction(text="New Python File", icon=self.icons.get('py'), parent=self)
-                new_python_action.triggered.connect(self.new_python_file)
-
-            new_plain_text_action = QAction(text="New Plain Text", icon=self.icons.get('menu_txt'), parent=self)
-            new_plain_text_action.triggered.connect(self.new_plain_text)
-            new_menu.addAction(new_file_action)
-            new_menu.addAction(new_project_action)
-            new_menu.addSeparator()
-            new_menu.addAction(new_python_action)
-            new_menu.addAction(new_plain_text_action)
-
-            # Open submenu
-            open_menu = QtWidgets.QMenu("Open", self)
-            open_menu.setIcon(self.icons.get('menu_open'))
-            open_file_action = QAction(text="Open File", icon=self.icons.get('menu_file'), parent=self)
-            open_file_action.triggered.connect(self.open_file)
-            open_project_action = QAction(text="Open Project", icon=self.icons.get('menu_open_project'), parent=self)
-            open_project_action.triggered.connect(self.open_project)
-            open_menu.addAction(open_file_action)
-            open_menu.addAction(open_project_action)
-
-            save_menu = QtWidgets.QMenu("Save As", self)
-            save_menu.setIcon(self.icons.get('menu_save_as'))
-            save_to_word_action = QAction(text="docx", icon=self.saves_icons['save_word'], parent=self)
-            save_to_word_action.setObjectName("save_to_word")
-            save_to_word_action.triggered.connect(self.container.save)
-
-            save_to_excel_action = QAction(text="xlsx", icon=self.saves_icons['save_excel'], parent=self)
-            save_to_excel_action.setObjectName("save_to_excel")
-            save_to_excel_action.triggered.connect(self.container.save)
-
-            save_to_pdf_action = QAction(text="pdf", icon=self.saves_icons['save_pdf'], parent=self)
-            save_to_pdf_action.setObjectName("save_to_pdf")
-            save_to_pdf_action.triggered.connect(self.container.save)
-
-            save_to_csv_action = QAction(text="csv", icon=self.saves_icons['save_csv'], parent=self)
-            save_to_csv_action.setObjectName("save_to_csv")
-            save_to_csv_action.triggered.connect(self.container.save)
-
-            save_to_json_action = QAction(text="json", icon=self.saves_icons['save_json'], parent=self)
-            save_to_json_action.setObjectName("save_to_json")
-            save_to_json_action.triggered.connect(self.container.save)
-
-            save_to_html_action = QAction(text="html", icon=self.saves_icons['save_html'], parent=self)
-            save_to_html_action.setObjectName("save_to_html")
-            save_to_html_action.triggered.connect(self.container.save)
-
-            save_to_xml_action = QAction(text="xml", icon=self.saves_icons['save_xml'], parent=self)
-            save_to_xml_action.setObjectName("save_to_xml")
-            save_to_xml_action.triggered.connect(self.container.save)
-
-            save_to_txt_action = QAction(text="txt", icon=self.saves_icons['save_txt'], parent=self)
-            save_to_txt_action.setObjectName("save_to_txt")
-            save_to_txt_action.triggered.connect(self.container.save)
-
-            save_menu.addAction(save_to_word_action)
-            save_menu.addAction(save_to_excel_action)
-            save_menu.addAction(save_to_pdf_action)
-            save_menu.addAction(save_to_csv_action)
-            save_menu.addAction(save_to_json_action)
-            save_menu.addAction(save_to_html_action)
-            save_menu.addAction(save_to_xml_action)
-            save_menu.addAction(save_to_txt_action)
-
-            file_menu = menubar.addMenu("File")
-            file_menu.setFixedWidth(150)
-            file_menu.setIcon(self.icons.get('menu_file'))
-            file_menu.addMenu(new_menu)
-            file_menu.addMenu(open_menu)
-            save_action = QAction(text="Save", icon=self.icons.get('menu_save'), parent=self)
-            save_action.triggered.connect(self.save_file)
-            file_menu.addAction(save_action)
-
-            file_menu.addMenu(save_menu)
-            file_menu.addSeparator()
-            exit_action = QAction(text="Exit", icon=self.icons.get('menu_exit'), parent=self)
-            exit_action.triggered.connect(self.close)
-            file_menu.addAction(exit_action)
-            file_menu.setIcon(self.icons.get('main_menu'))
-
-            projects_menu = menubar.addMenu(os.path.basename(self.current_workspace))
-            open_project_action = QAction(text="Open...", icon=self.icons.get('menu_open'), parent=self)
-            open_project_action.triggered.connect(self.open_file_explorer)
-            projects_menu.addAction(open_project_action)
-
-            projects_menu.addSeparator()
-
-            current_project_action = QAction(text=os.path.basename(self.current_workspace),
-                                             icon=self.icons.get('menu_open'), parent=self)
-            current_project_action.triggered.connect(lambda: self.open_project(self.current_workspace))
-            projects_menu.addAction(current_project_action)
-
-            current_project_path_action = QAction(text=self.current_workspace, parent=self)
-            current_project_path_action.setEnabled(False)
-            projects_menu.addAction(current_project_path_action)
-
-            projects_menu.addSeparator()
-
-            # Add recent projects
-            # existing_projects = ["D:\\project\\proj-01", "D:\\project\\proj-02"]
-            # for project_path in existing_projects:
-            #     project_name = os.path.basename(project_path)
-            #     project_action = QAction(project_name, self)
-            #     project_action.triggered.connect(lambda checked, path=project_path: self.open_project(path))
-            #     projects_menu.addAction(project_action)
-
-            # Styling for the projects menu
-            projects_menu.setStyleSheet("""
-                QMenu {
-                    background-color: #2e2e2e;
-                    color: #ffffff;
-                    border: 1px solid #1e1e1e;
-                }
-                QMenu::item {
-                    color: #7097ba;
-                }
-                QMenu::separator {
-                    height: 1px;
-                    background: #4e4e4e;
-                    margin-left: 10px;
-                    margin-right: 5px;
-                }
-            """)
-
-        self.menubar = QMenuBar(self)
-        self.menubar.setObjectName("menubar")
-
-        configure_menu(self.menubar)
-
-        self.file_path_label = QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]")
-        self.file_path_label.setObjectName("file_path_label")
-        self.file_path_label.setStyleSheet("color: #7097ba")
-        self.file_path_label.setFixedWidth(
-            QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
-        self.file_path_label.setAlignment(Qt.AlignCenter)
-        self.menubar.setCornerWidget(self.file_path_label, Qt.Corner.TopRightCorner)
-
-        return self.menubar
 
     def open_file_explorer(self, path=None):
         if not path:
@@ -448,10 +333,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def update_current_open_file(self, filepath):
         self.current_open_file = filepath
-        self.file_path_label.setText(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]")
-
-        self.file_path_label.setFixedWidth(
-            QLabel(f"{os.path.basename(self.current_open_file)} [{self.current_workspace}]").width())
+        self.title_bar.update_current_open_file(filepath)
 
     def keyPressEvent(self, event):
         if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_S:
@@ -633,9 +515,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                    options=options)
         if file_path:
             try:
-                with open(file_path, 'w') as file:
+                with open(file_path + ".py", 'w') as file:
                     file.write('')
-                QMessageBox.information(self, "Success", f"New Python file created: {file_path}")
+                QMessageBox.information(self, "Success", f"New Python file created: {file_path}.py")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to create Python file: {str(e)}")
 
@@ -645,7 +527,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                                    options=options)
         if file_path:
             try:
-                with open(file_path, 'w') as file:
+                with open(file_path + '.txt', 'w') as file:
                     file.write('')
                 QMessageBox.information(self, "Success", f"New plain text file created: {file_path}")
             except Exception as e:
@@ -674,7 +556,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         #         QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def open_project(self):
-        QMessageBox.information(self,  "Warning", "This function is currently not implemented, added in the future")
+        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
 
         # directory_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
         # if directory_path:

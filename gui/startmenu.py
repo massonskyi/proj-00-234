@@ -21,6 +21,7 @@ class Ui_StartMenu(QMainWindow):
         Initializes the start menu.
         """
         super().__init__()
+        self.title_bar = None
         self.setMaximumWidth(600)
         self.setMaximumHeight(800)
         self.main_window = None
@@ -70,20 +71,20 @@ class Ui_StartMenu(QMainWindow):
         self.setupUi()
 
     def setupUi(self) -> None:
+        central_widget = QWidget()
         self.setWindowTitle('project-00-234')
         self.setGeometry(100, 100, 400, 800)
-        self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
-        self.main_window = Ui_MainWindow(**{'path': f"{os.path.dirname(__file__)}", 'ft': "*"})
-        self.title_bar = CustomTitleBar(self.icons,self.main_window, self)
-        self.setMenuWidget(self.title_bar)
+
         self.create_project_button = self.create_button("Создать новый проект", self.show_create_project_form,
                                                         "#4CAF50")
         self.open_project_button = self.create_button("Выбрать проект", self.show_open_project_form,
                                                       "#008CBA")
         # self.settings_button = self.create_button("Настройки", self.show_settings_form, "#5a9c9b")
+        self.exit_button = self.create_button("Выход", self.close_window, "#5a9c9b")
         initial_layout = QtWidgets.QVBoxLayout()
         initial_layout.addWidget(self.create_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
         initial_layout.addWidget(self.open_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
+        initial_layout.addWidget(self.exit_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
 
         initial_widget = QtWidgets.QWidget()
         initial_widget.setLayout(initial_layout)
@@ -94,7 +95,11 @@ class Ui_StartMenu(QMainWindow):
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.stacked_widget)
-        self.setLayout(main_layout)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+
+    def close_window(self) -> None:
+        self.close()
 
     def create_button(self, text, on_click, color=None) -> QtWidgets.QPushButton:
         button = QtWidgets.QPushButton(text)
@@ -143,6 +148,7 @@ class Ui_StartMenu(QMainWindow):
         line_edit = QtWidgets.QLineEdit()
         line_edit.setReadOnly(True)
         return line_edit
+
     def show_create_project_form(self) -> None:
         """
         Shows the create project form.
@@ -208,7 +214,6 @@ class Ui_StartMenu(QMainWindow):
             "file_type": file_type
         }
 
-
         projmd_file = os.path.join(dir_path, "proj.projmd")
         with open(projmd_file, 'w') as f:
             json.dump(project_data, f, indent=4)
@@ -232,7 +237,7 @@ class Ui_StartMenu(QMainWindow):
         dir_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
         if dir_path:
             projmd_file = os.path.join(dir_path, "proj.projmd")
-            config_file = os.path.join(dir_path,  "configuration_config_mdt.json")
+            config_file = os.path.join(dir_path, "configuration_config_mdt.json")
             if os.path.exists(projmd_file):
                 with open(projmd_file, 'r') as f:
                     project_data = json.load(f)
