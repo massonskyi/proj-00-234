@@ -1,12 +1,16 @@
 import json
 import os
+from datetime import time
 
 from PySide6 import QtWidgets, QtCore
+from PySide6.QtCore import QThread, Qt
 from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget
 
+from gui.Threads.LoadThread import LoaderThread
 from gui.main_window import Ui_MainWindow
+from gui.widgets.customs.CustomLoadingWindow import LoadingWindow
 from utils.loaders import load_icon
-
+from utils.tools import check_configuration, remove_pycache_dirs
 
 
 class Ui_StartMenu(QMainWindow):
@@ -19,6 +23,7 @@ class Ui_StartMenu(QMainWindow):
         Initializes the start menu.
         """
         super().__init__()
+        self._run_setup()
         self.title_bar = None
         self.setMaximumWidth(600)
         self.setMaximumHeight(800)
@@ -282,3 +287,43 @@ class Ui_StartMenu(QMainWindow):
         self.main_window = Ui_MainWindow(**{'path': project_path, 'ft': file_type})
         self.main_window.show()
         self.close()
+
+    def _run_setup(self) -> None:
+        self._thread_check_configuration()
+
+    def _thread_check_configuration(self) -> None:
+        """
+        Checks if the configuration file exists and creates it if it doesn't.
+        :return: None
+        """
+        self.loader_window = LoadingWindow(self)  # Create instance of LoadingWindow
+        self.loader_window.setWindowModality(Qt.WindowModal)
+        self.loader_window.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        self.loader_window.show()
+        self.loader_thread = LoaderThread(check_configuration)
+        self.loader_thread.progress_update.connect(self.loader_window.update_progress)
+        self.loader_thread.task_completed.connect(self.on_check_configuration_completed)
+        self.loader_thread.start()
+
+    def _thread_remove_cache_dirs(self) -> None:
+        """
+        Removes the cache directory from the main window.
+        :return: None
+        """
+        self.loader_window = LoadingWindow(self)  # Create instance of LoadingWindow
+        self.loader_window.setWindowModality(Qt.WindowModal)
+        self.loader_window.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        self.loader_window.show()
+        self.loader_thread = LoaderThread(remove_pycache_dirs)
+        self.loader_thread.progress_update.connect(self.loader_window.update_progress)
+        self.loader_thread.task_completed.connect(self.on_remove_cache_dirs_completed)
+        self.loader_thread.start()
+
+    def on_remove_cache_dirs_completed(self):
+        QThread.sleep(1)
+        self.loader_window.close()
+
+    def on_check_configuration_completed(self):
+        QThread.sleep(1)
+        self.loader_window.close()
+        self._thread_remove_cache_dirs()
