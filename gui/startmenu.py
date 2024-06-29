@@ -74,6 +74,7 @@ class Ui_StartMenu(QMainWindow):
         }
 
         self.setupUi()
+
     def center(self):
         available_geometry = QApplication.primaryScreen().availableGeometry()
 
@@ -294,9 +295,47 @@ class Ui_StartMenu(QMainWindow):
         :param file_type: The file type.
         :return: None
         """
+
         self.main_window = Ui_MainWindow(**{'path': project_path, 'ft': file_type})
         self.main_window.show()
-        self.close()
+
+        if self.isVisible():
+            self.close()
+
+    def open_main_window_from_file(self, project_path, file_type=None) -> None:
+        """
+        Opens the main window. from file
+        :param project_path: The path to the project.
+        :param file_type: The file type.
+        :return: None
+        """
+        dir_path  = os.path.dirname(project_path)
+        if dir_path:
+            projmd_file = os.path.join(dir_path, "proj.projmd")
+            config_file = os.path.join(dir_path, "configuration_config_mdt.json")
+
+            project_data = {
+                "directory": dir_path,
+                "file_type": "*"
+            }
+
+            with open(projmd_file, 'w') as f:
+                json.dump(project_data, f, indent=4)
+
+            from utils.configuration_config_mdt import ConfigurationMDTH
+            try:
+                ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+                return
+            self.check_main_dirs(dir_path)
+            if os.path.exists(projmd_file) and os.path.exists(config_file):
+                self.main_window = Ui_MainWindow(**{'path': dir_path, 'ft': file_type})
+                self.main_window.file_widget.load_file(project_path)
+                self.main_window.show()
+
+        if self.isVisible():
+            self.close()
 
     def _run_setup(self) -> None:
         self._thread_check_configuration()

@@ -301,9 +301,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.right_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
         self.right_toolbar_container.setFixedWidth(60)
 
-
-
-
         self.right_layout.addWidget(self.container)
         self.right_layout.addWidget(self.right_toolbar_container)
 

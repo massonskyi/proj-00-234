@@ -20,8 +20,8 @@ class CustomFileManager(QtWidgets.QWidget):
     """
     Custom file manager widget.
     """
-    file_selected = Signal(list) # Сигнал для выбора файла
-    filepath_selected = Signal(str) # Сигнал для выбора пути файла
+    file_selected = Signal(list)  # Сигнал для выбора файла
+    filepath_selected = Signal(str)  # Сигнал для выбора пути файла
 
     def __init__(self, path: str = None, parent=None) -> None:
         """
@@ -64,13 +64,60 @@ class CustomFileManager(QtWidgets.QWidget):
         button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         layout.addLayout(button_layout)
 
+    def load_file(self, file_path: str) -> None:
+        """
+        Load the file to the widget.
+        :param file_path: path of the file to be loaded
+        :return: None
+        """
+        if file_path:
+            self.filepath_selected.emit(file_path)
+            data = []
+            file_ext: str = file_path.lower()
+
+            if file_ext.endswith('.mdth'):
+                data = [{"mdth": load_mdth_file(file_path)}]
+            elif file_ext.endswith(('.png', '.jpg', '.bmp')):
+                data = [{'image_path': file_path}]
+            elif file_ext.endswith('.csv'):
+                data = pd.read_csv(file_path).to_dict(orient='records')
+            elif file_ext.endswith('.xlsx') or file_ext.endswith('.xls'):
+                data = pd.read_excel(file_path).to_dict(orient='records')
+            elif file_ext.endswith('.docx'):
+                doc: Document = Document(file_path)
+                data_temp: list = []
+                for table in doc.tables:
+                    table_data: list = []
+                    for row in table.rows:
+                        row_data: list = []
+                        for cell in row.cells:
+                            row_data.append(cell.text)
+                        table_data.append(row_data)
+                    data_temp.append(table_data)
+                data = [{"dataword": data_temp}]
+
+            elif file_ext.endswith('.pdf'):
+                with pdfplumber.open(file_path) as pdf:
+                    tmp: list = []
+                    for page in pdf.pages:
+                        tmp.append(page.extract_text())
+
+                    data = [{"pdf": tmp}]
+            else:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data.append(f.read())
+
+            self.file_selected.emit(data)
+
     def select_file(self, index: QModelIndex) -> None:
         """
         Select the file to be open.
         :param index: index of the selected file
+        :param path: path of the selected file
         :return: None
         """
         file_path = self.model.filePath(index)
+
         if not os.path.isfile(file_path):
             return
 

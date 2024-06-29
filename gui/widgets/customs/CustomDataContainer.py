@@ -394,7 +394,6 @@ class CustomDataContainer(QWidget):
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
-                answer_textbox.setText("1")
                 answer_textbox.installEventFilter(self)
                 answer_textbox.textChanged.connect(self.on_text_changed)
                 self.name_textboxes.append([number_label, answer_textbox])
