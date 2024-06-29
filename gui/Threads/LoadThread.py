@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QThread, Signal, QEventLoop
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QProgressBar, QPushButton
 from time import perf_counter
 
+from gui.Threads.CallbackThread import CallbackThread
+
 
 class LoaderThread(QThread):
     """
@@ -11,16 +13,16 @@ class LoaderThread(QThread):
     """
     progress_update = Signal(int)  # Сигнал для обновления прогресса
     task_completed = Signal()  # Сигнал для завершения задачи
+    task_string_signal = Signal(str)
 
     def __init__(self, function_to_run: callable, *args, **kwargs) -> None:
         """
         Initializes the thread with the given function to run
         """
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self.task = function_to_run
         self.args = args
         self.kwargs = kwargs
-
     def run(self) -> None:
         """
         Runs the function in the separate thread and updates the progress bar
@@ -28,11 +30,10 @@ class LoaderThread(QThread):
         """
 
         elapsed_time = self._calculate_emulate_time_running()
-
         for i in range(101):
             QThread.msleep(int(elapsed_time * 10))  # Задержка пропорционально времени выполнения
-            self._update_progress(i)  # Отправка сигнала с обновлением прогресса
-        print([next(iter) for iter in self.task(*self.args, **self.kwargs)])
+            self._update_progress(i)
+
         self.task_completed.emit()
 
     def _update_progress(self, progress: int) -> None:

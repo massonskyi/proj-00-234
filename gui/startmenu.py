@@ -1,10 +1,9 @@
 import json
 import os
-from datetime import time
 
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import QThread, Qt
-from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget, QApplication
 
 from gui.Threads.LoadThread import LoaderThread
 from gui.main_window import Ui_MainWindow
@@ -23,6 +22,8 @@ class Ui_StartMenu(QMainWindow):
         Initializes the start menu.
         """
         super().__init__()
+        # self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
+
         self._run_setup()
         self.title_bar = None
         self.setMaximumWidth(600)
@@ -39,7 +40,8 @@ class Ui_StartMenu(QMainWindow):
         self.open_project_button = None
         self.create_project_button = None
         self.setWindowTitle('Начало')
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(400, 500, 400, 300)
+        # self.move(self.center())
         self.stacked_widget = QtWidgets.QStackedWidget()
 
         self.icons = {
@@ -72,6 +74,14 @@ class Ui_StartMenu(QMainWindow):
         }
 
         self.setupUi()
+    def center(self):
+        available_geometry = QApplication.primaryScreen().availableGeometry()
+
+        # Вычисляем центральное положение окна
+        window_width, window_height = self.width(), self.height()
+        x = (available_geometry.width() - window_width) // 2
+        y = (available_geometry.height() - window_height) // 2
+        return QPoint(x, y)
 
     def setupUi(self) -> None:
         central_widget = QWidget()
@@ -320,10 +330,8 @@ class Ui_StartMenu(QMainWindow):
         self.loader_thread.start()
 
     def on_remove_cache_dirs_completed(self):
-        QThread.sleep(1)
         self.loader_window.close()
 
     def on_check_configuration_completed(self):
-        QThread.sleep(1)
         self.loader_window.close()
         self._thread_remove_cache_dirs()

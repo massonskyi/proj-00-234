@@ -6,16 +6,16 @@ def check_configuration():
     config_file_path = "./configuration_config_mdt.json"
 
     if os.path.exists(config_file_path):
-        yield [True]
+        yield True
 
     try:
         from utils.configuration_config_mdt import ConfigurationMDTH
         config = ConfigurationMDTH.create_configuration_config_mdt()
         config.save_as_json()
     except Exception as e:
-        yield [f"Failed to create configuration file: {str(e)}"]
+        yield f"Failed to create configuration file: {str(e)}"
     else:
-        yield ["Configuration file created successfully."]
+        yield "Configuration file created successfully."
 
 
 def remove_pycache_dirs(start_path='.'):

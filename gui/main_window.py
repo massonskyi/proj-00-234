@@ -3,11 +3,14 @@ import subprocess
 import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6.QtCore import QPoint
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
-    QMessageBox
+    QMessageBox, QMainWindow, QApplication
 
+from gui.tools.subtools.graph_window import GraphWindow
 from gui.widgets.customs.CustomBashConsole import CustomBashConsole
+from gui.widgets.customs.CustomGraphWidget import CustomGraphWidget
 from gui.widgets.customs.CustomTitleBar import CustomTitleBar
 from gui.widgets.customs.CustomFileManager import CustomFileManager
 from gui.widgets.customs.CustomPyConsole import CustomPyConsole
@@ -32,6 +35,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.graph_widget = None
+        self.button_graph_toggle = None
         self.right_container = None
         self.button_test = None
         self.button_pyconsole = None
@@ -110,6 +115,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'maximize': load_icon('./assets/title/maximize.png'),
             'close': load_icon('./assets/title/close.png'),
             'title_main': load_icon('./assets/title_main.png'),
+            'graph': load_icon('./assets/folder/graph.png'),
         }
         self.saves_icons = {
             'save_word': load_icon('./assets/save2/sword.png'),
@@ -231,6 +237,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             background-color: transparent;
             """
         )
+        self.button_graph_toggle  = QPushButton(icon=self.icons.get('graph'))
+        self.button_graph_toggle.setObjectName("toggle_graph_btn")
+        self.button_graph_toggle.setFixedSize(50, 40)
+        self.button_graph_toggle.clicked.connect(self.toggle_buttons_widget_visibility)
+        self.button_test.setToolTip("Toggle graph")
+        self.button_test.setStyleSheet(
+            """
+            background-color: transparent;
+            """
+        )
 
         if not python_installed:
             self.button_pyconsole.setEnabled(False)
@@ -238,6 +254,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         # Add buttons to the toolbar layout
         self.left_toolbar_layout.addWidget(self.button_hide_file_widget)
         self.left_toolbar_layout.addWidget(self.button_test)
+        self.left_toolbar_layout.addWidget(self.button_graph_toggle)
 
         self.left_toolbar_layout.addStretch()
         self.left_toolbar_layout.addWidget(self.button_pyconsole)
@@ -250,7 +267,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                                             parent=self.left_container)
         self.test_widget.setVisible(False)
 
+        self.graph_widget = CustomGraphWidget(parent=self.left_container)
+        self.graph_widget.setVisible(False)
+        self.graph_widget.mouseDoubleClickEvent = self.graph_double_click_event
+
         self.test_widget.set_scrollbar_value.connect(self.container.set_scrollbar_value)
+        self.container.send_values.connect(self.graph_widget.plot)
         self.container.get_textboxes.connect(self.test_widget.updateIcons)
         self.container.show_tests.connect(self.test_widget.loadTests)
 
@@ -261,6 +283,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.left_toolbar_splitter.addWidget(self.file_widget)
         self.left_toolbar_splitter.addWidget(self.test_widget)
+        self.left_toolbar_splitter.addWidget(self.graph_widget)
 
         self.left_layout.addWidget(self.left_toolbar_container)
         self.left_layout.addWidget(self.left_toolbar_splitter)
@@ -278,12 +301,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.right_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
         self.right_toolbar_container.setFixedWidth(60)
 
+
+
+
         self.right_layout.addWidget(self.container)
         self.right_layout.addWidget(self.right_toolbar_container)
 
         self.splitter.addWidget(self.left_container)
         self.splitter.addWidget(self.right_container)
         self.splitter.setSizes([int(0.20 * self.splitter.width()), int(0.80 * self.splitter.width())])
+
         self.add_initial_buttons()
         self.current_icon_state = "closed"
         self.update_button_icon()
@@ -310,8 +337,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.adjust_container_sizes_()
 
-        # menu_bar = self.setupUiMenu()
-        # _MainWindow.setMenuBar(menu_bar)
         _MainWindow.setWindowTitle("Main Window")
 
     def check_python_installed(self):
@@ -418,9 +443,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 _widget.setVisible(visible)
                 _button.setStyleSheet(button_styleSheet)
 
-            if _widget_name in ['hide_file_widget_btn', 'hide_test_widget_btn']:
+            if _widget_name in ['hide_file_widget_btn', 'hide_test_widget_btn', 'toggle_graph_btn']:
                 self.adjust_container_sizes()
-            else:
+            elif  _widget_name in ['show_file_widget_btn', 'show_test_widget_btn']:
                 self.adjust_container_sizes_()
 
         widget_name: str = self.sender().objectName()
@@ -429,6 +454,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             "hide_test_widget_btn": (self.test_widget, self.button_test),
             "hide_bash_widget_btn": (self.bash_console, self.button_bash),
             "hide_pyconsole_widget_btn": (self.pyconsole, self.button_pyconsole),
+            "toggle_graph_btn": (self.graph_widget, self.button_graph_toggle)
         }
 
         widget, button = widget_mapping.get(widget_name, (None, None))
@@ -607,3 +633,20 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def reset(self, path=None):
         self.file_widget = CustomFileManager(path, self)
         self.container.reset()
+
+    def graph_double_click_event(self, event):
+        if event.button() == Qt.LeftButton:
+            self.open_graph_in_new_window()
+
+    def open_graph_in_new_window(self):
+        # Remove from main window
+        self.graph_widget.setParent(None)
+
+        # Create and show the new graph window
+        self.graph_window = GraphWindow(self.graph_widget, self)
+        self.graph_window.show()
+
+    def _add_graph(self):
+        # Restore graph widget to the main window
+        self.graph_widget.setParent(None)  # Remove from any current parent
+        self.left_toolbar_splitter.addWidget(self.graph_widget)

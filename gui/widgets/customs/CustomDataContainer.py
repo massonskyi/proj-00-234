@@ -1,4 +1,5 @@
 import json
+import threading
 from typing import List, Any
 
 from PySide6 import QtCore
@@ -28,10 +29,13 @@ from PySide6.QtWidgets import (
     QPushButton
 )
 
+from gui.Threads.CallbackThread import CallbackThread
+from gui.Threads.LoadThread import LoaderThread
 from gui.tools.json_formatter import JsonFormatter
 from gui.tools.python_formatter import PythonFormatter
 from gui.tools.txt_formatter import TxtFormatter
 from gui.tools.xml_formatter import XmlFormatter
+from gui.widgets.customs.CustomLoadingWindow import LoadingWindow
 from gui.widgets.customs.CustomTextEdit import CustomTextEdit
 
 from utils.s2f import (
@@ -52,7 +56,7 @@ class CustomDataContainer(QWidget):
     """
     get_textboxes = Signal(list)  # list of textboxes
     show_tests = Signal(list)  # list of tests
-
+    send_values  = Signal(list)   # list of values
     def __init__(self, path: str, icons: list, data: list = None, file_type: str = None, parent=None):
         """
         Initialize custom data container for custom data
@@ -214,14 +218,18 @@ class CustomDataContainer(QWidget):
         """
         self.update_result_data()
 
+        _value = []
+
         self.result_table.setRowCount(len(self.result_data))
         self.result_table.setColumnCount(len(self.result_data[0]) if self.result_data else 0)
         for row, row_data in enumerate(self.result_data):
+            _value.append(row_data[2])
             for column, value in enumerate(row_data):
                 item: QTableWidgetItem = QTableWidgetItem(str(value))
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 self.result_table.setItem(row, column, item)
         self.result_table.resizeColumnsToContents()
+        self.send_values.emit(_value)
 
     def show_result_block(self) -> None:
         """
@@ -386,7 +394,7 @@ class CustomDataContainer(QWidget):
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
-
+                answer_textbox.setText("1")
                 answer_textbox.installEventFilter(self)
                 answer_textbox.textChanged.connect(self.on_text_changed)
                 self.name_textboxes.append([number_label, answer_textbox])
@@ -454,7 +462,9 @@ class CustomDataContainer(QWidget):
         Update the content of the widgets.
         :param data: list of dict of data
         """
+
         self.data: list = data
+
         self.update_ui()
 
     def get_data(self) -> list | list[Any] | None | Any:
