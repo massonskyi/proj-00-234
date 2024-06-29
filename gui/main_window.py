@@ -399,26 +399,27 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         file_path = self.current_open_file
         if not file_path:
             return
-
-        if file_path.endswith(".mdth"):
-            import json
-            try:
-                data = self.container.get_data()[0].get('mdth')
-                with open(self.current_open_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
-                print("Data saved successfully.")
-            except Exception as e:
-                print(f"Failed to save data: {e}")
-            return
-        if file_path.endswith((".txt", ".py", ".json")):
-            with open(file_path, 'w') as f:
-                text = self.container.get_data()
-                if not text:
-                    QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
-                f.write(text)
-            return
-        else:
-            QMessageBox.information(self, "File saved failed", "File type is not supported")
+        return
+        # if file_path.endswith(".mdth"):
+        #     import json
+        #     try:
+        #         data = self.container.textboxes
+        #
+        #         with open(self.current_open_file, "w", encoding="utf-8") as f:
+        #             json.dump(data, f, ensure_ascii=False, indent=4)
+        #         print("Data saved successfully.")
+        #     except Exception as e:
+        #         print(f"Failed to save data: {e}")
+        #     return
+        # if file_path.endswith((".txt", ".py", ".json")):
+        #     with open(file_path, 'w') as f:
+        #         text = self.container.get_data()
+        #         if not text:
+        #             QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
+        #         f.write(text)
+        #     return
+        # else:
+        #     QMessageBox.information(self, "File saved failed", "File type is not supported")
 
     def toggle_buttons_widget_visibility(self) -> None:
         """
@@ -542,7 +543,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         if file_path:
             try:
                 import json
-                with open("configuration_config_mdt.json", "r", encoding="utf-8") as file:
+                with open(f"{os.path.dirname(file_path)}/configuration_config_mdt.json", "r", encoding="utf-8") as file:
                     data = json.load(file)
 
                 from utils.s2f import generate_mdth_file

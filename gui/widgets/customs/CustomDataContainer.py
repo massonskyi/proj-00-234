@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 from typing import List, Any
 
@@ -12,7 +13,7 @@ from PySide6.QtCore import (
 
 from PySide6.QtGui import (
     QPixmap,
-    QFont
+    QFont, QIntValidator
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -56,7 +57,8 @@ class CustomDataContainer(QWidget):
     """
     get_textboxes = Signal(list)  # list of textboxes
     show_tests = Signal(list)  # list of tests
-    send_values  = Signal(list)   # list of values
+    send_values = Signal(list)  # list of values
+
     def __init__(self, path: str, icons: list, data: list = None, file_type: str = None, parent=None):
         """
         Initialize custom data container for custom data
@@ -223,7 +225,8 @@ class CustomDataContainer(QWidget):
         self.result_table.setRowCount(len(self.result_data))
         self.result_table.setColumnCount(len(self.result_data[0]) if self.result_data else 0)
         for row, row_data in enumerate(self.result_data):
-            _value.append(row_data[2])
+            if len(row_data) >= 3:
+                _value.append(row_data[2])
             for column, value in enumerate(row_data):
                 item: QTableWidgetItem = QTableWidgetItem(str(value))
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled)
@@ -317,35 +320,11 @@ class CustomDataContainer(QWidget):
 
             self.result_data.append(row_data)
 
-    def update_data_from_sender(self) -> None:
-        """
-        Update data from sender
-        :return: None
-        """
-
-        if not self.data:
-            print("No data available.")
-            return
-
-        mdth: list = self.data[0].get("mdth", None)
-
-        if mdth is None:
-            print("No 'mdth' data available.")
-            return
-
-        event: str = self.sender().objectName()
-        for it in range(len(mdth)):
-            if event in mdth[it]['idx']:
-                mdth[it]['data'] = self.sender().text()
-                break
-
     def on_text_changed(self) -> None:
         """
         On text changed event.
         :return: None
         """
-        if not self.sender().objectName() in self.calculations.keys():
-            self.update_data_from_sender()
 
         self.get_textboxes.emit(self.name_textboxes)
 
@@ -373,17 +352,21 @@ class CustomDataContainer(QWidget):
             number_label: QLabel = QLabel(number)
             indicator_label: QLabel = QLabel(indicator)
             indicator_label.setWordWrap(True)
+            if self._is_valid_string(item["idx"]):
+                indicator_label.setAlignment(Qt.AlignRight)
+            else:
+                indicator_label.setAlignment(Qt.AlignLeft)
 
             grid_layout.addWidget(number_label, row, 0)
             grid_layout.addWidget(indicator_label, row, 1)
-
+            int_validator = QIntValidator(0, 1000)
             answer_textbox: QLineEdit = QLineEdit()
             self.all_textboxes.append(answer_textbox)
             answer_textbox.setObjectName(f"{number}")
 
             if item["data"].startswith("(Автосумма)\n"):
                 answer_textbox.setDisabled(True)
-                self.calculations[number] = item
+                self.calculations[f"{number}"] = item
                 self.hidden_textboxes.append(answer_textbox)
                 continue
 
@@ -394,6 +377,11 @@ class CustomDataContainer(QWidget):
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
+                # answer_textbox.setText("1")
+
+                if item["data"] == ("(Ввод числа)"):
+                    answer_textbox.setValidator(int_validator)
+
                 answer_textbox.installEventFilter(self)
                 answer_textbox.textChanged.connect(self.on_text_changed)
                 self.name_textboxes.append([number_label, answer_textbox])
@@ -403,6 +391,11 @@ class CustomDataContainer(QWidget):
 
         self.show_tests.emit(self.name_textboxes)
         layout.addLayout(grid_layout)
+
+    def _is_valid_string(self, s):
+        # Регулярное выражение для проверки допустимых символов
+        pattern = r'^[\-\!\\"№;%\[\]/=_\.,\+]*$'
+        return bool(re.match(pattern, s))
 
     def set_scrollbar_value(self, obj: object) -> None:
         """
