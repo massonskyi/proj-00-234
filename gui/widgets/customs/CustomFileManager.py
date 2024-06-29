@@ -12,7 +12,7 @@ from docx import Document
 from utils.s2f import load_mdth_file
 
 
-class FileManager(QtWidgets.QWidget):
+class CustomFileManager(QtWidgets.QWidget):
     file_selected = Signal(list)
     filepath_selected = Signal(str)
 
@@ -93,13 +93,15 @@ class FileManager(QtWidgets.QWidget):
                 data = [{"dataword": data_temp}]
 
             elif file_ext.endswith('.pdf'):
-                # Открываем PDF-файл с помощью pdfplumber
                 with pdfplumber.open(file_path) as pdf:
+                    tmp = []
                     for page in pdf.pages:
-                        data.append(page.extract_text())
+                        tmp.append(page.extract_text())
+
+                    data = [{"pdf": tmp}]
             else:
-                with open(file_path, 'r') as f:
-                    data = [line.strip() for line in f.readlines()]
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data.append(f.read())
 
             self.file_selected.emit(data)
 

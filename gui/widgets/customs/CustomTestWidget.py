@@ -1,12 +1,10 @@
-from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, Slot, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QLabel, QTableWidget, \
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, \
     QAbstractItemView, QTableWidgetItem, QLineEdit
-from gui.widgets.customwidgetitem import CustomWidgetItem
 
 
-class TestWidget(QWidget):
+class CustomTestWidget(QWidget):
     set_scrollbar_value = Signal(QLineEdit)
 
     def __init__(self, test_names=None, icons=None, parent=None):

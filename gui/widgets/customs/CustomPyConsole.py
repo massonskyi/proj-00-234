@@ -8,7 +8,7 @@ import code
 import threading
 
 
-class ConsoleWidget(QPlainTextEdit):
+class CustomPyConsole(QPlainTextEdit):
     def __init__(self, path, parent=None):
         super().__init__(parent)
         self.path = path

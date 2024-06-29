@@ -2,12 +2,9 @@ import json
 import os
 
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget
 
 from gui.main_window import Ui_MainWindow
-from gui.widgets.customtitlebar import CustomTitleBar
 from utils.loaders import load_icon
 
 

@@ -1004,7 +1004,7 @@ class CommandThread(QThread):
         self.commandFinished.emit()
 
 
-class BashConsoleWidget(QPlainTextEdit):
+class CustomBashConsole(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Bash Console')
@@ -1096,7 +1096,7 @@ from docx import Document
 from utils.s2f import load_mdth_file
 
 
-class FileManager(QtWidgets.QWidget):
+class CustomFileManager(QtWidgets.QWidget):
     file_selected = Signal(list)
     filepath_selected = Signal(str)
 
@@ -1251,7 +1251,7 @@ import code
 import threading
 
 
-class ConsoleWidget(QPlainTextEdit):
+class CustomPyConsole(QPlainTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Custom Console')
@@ -1328,7 +1328,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = QWidget()
     layout = QVBoxLayout()
-    console = ConsoleWidget()
+    console = CustomPyConsole()
     layout.addWidget(console)
     window.setLayout(layout)
     window.setWindowTitle('PySide6 Console Widget')
@@ -1353,7 +1353,7 @@ from utils.s2f import save_to_word, save_to_excel, save_to_pdf, save_to_csv, sav
     save_to_xml
 
 
-class ScrollableContainer(QWidget):
+class CustomDataContainer(QWidget):
     get_textboxes = Signal(list)
     show_tests = Signal(list)
 
@@ -1904,7 +1904,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QListWidget, Q
 from gui.widgets.customwidgetitem import CustomWidgetItem
 
 
-class TestWidget(QWidget):
+class CustomTestWidget(QWidget):
     def __init__(self, test_names=None, icons=None, parent=None):
         super().__init__(parent)
         if icons is None:
@@ -1982,11 +1982,11 @@ from PySide6.QtGui import QAction, Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
     QMessageBox, QMenuBar, QLabel
 
-from gui.widgets.bashconsole import BashConsoleWidget
-from gui.widgets.filemanager import FileManager
-from gui.widgets.pyconsole import ConsoleWidget
-from gui.widgets.scrollcontainter import ScrollableContainer
-from gui.widgets.testwidget import TestWidget
+from gui.widgets.bashconsole import CustomBashConsole
+from gui.widgets.filemanager import CustomFileManager
+from gui.widgets.pyconsole import CustomPyConsole
+from gui.widgets.scrollcontainter import CustomDataContainer
+from gui.widgets.testwidget import CustomTestWidget
 from utils.loaders import load_icon
 
 
@@ -2078,12 +2078,12 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.centralwidget.setObjectName("centralwidget")
 
         self.container = self.setupUiMainFrame()
-        self.bash_console = BashConsoleWidget(self.container)
+        self.bash_console = CustomBashConsole(self.container)
 
         python_installed = self.check_python_installed()
 
         if python_installed:
-            self.pyconsole = ConsoleWidget(self.container)
+            self.pyconsole = CustomPyConsole(self.container)
             self.pyconsole.setVisible(False)
         else:
             self.pyconsole = None
@@ -2153,20 +2153,20 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_toolbar_layout.addWidget(self.button_pyconsole)
         self.left_toolbar_layout.addWidget(self.button_test)
 
-        # Create splitter for FileManager and TestWidget
+        # Create splitter for CustomFileManager and CustomTestWidget
         self.left_toolbar_splitter = QSplitter(QtCore.Qt.Vertical)
-        self.test_widget = TestWidget(icons=[self.icons.get('success_question'),
+        self.test_widget = CustomTestWidget(icons=[self.icons.get('success_question'),
                                              self.icons.get('failed_question'),
                                              self.icons.get('process_question')],
                                       parent=self.left_container)
 
         self.container.get_textboxes.connect(self.test_widget.updateIcons)
         self.container.show_tests.connect(self.test_widget.loadTests)
-        self.file_widget = FileManager(kwargs.get('path'), _MainWindow)
+        self.file_widget = CustomFileManager(kwargs.get('path'), _MainWindow)
         self.file_widget.file_selected.connect(self.container.update_content)
         self.file_widget.filepath_selected.connect(self.update_current_open_file)
 
-        # Add FileManager and TestWidget to the splitter
+        # Add CustomFileManager and CustomTestWidget to the splitter
         self.left_toolbar_splitter.addWidget(self.file_widget)
         self.left_toolbar_splitter.addWidget(self.test_widget)
 
@@ -2411,7 +2411,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
          Setup the main frame of the main window .
         :return: QWidget
         """
-        container = ScrollableContainer(self.current_workspace)
+        container = CustomDataContainer(self.current_workspace)
         container.setObjectName("MainContainer")
         return container
 
@@ -2659,7 +2659,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         #             self.reset(self.current_workspace)
 
     def reset(self, path=None):
-        self.file_widget = FileManager(path, self)
+        self.file_widget = CustomFileManager(path, self)
         self.container.reset()
 
 ///

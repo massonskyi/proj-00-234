@@ -3,16 +3,16 @@ import subprocess
 import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
-from PySide6.QtGui import QAction, Qt
+from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
-    QMessageBox, QMenuBar, QLabel
+    QMessageBox
 
-from gui.widgets.bashconsole import BashConsoleWidget
-from gui.widgets.customtitlebar import CustomTitleBar
-from gui.widgets.filemanager import FileManager
-from gui.widgets.pyconsole import ConsoleWidget
-from gui.widgets.scrollcontainter import ScrollableContainer
-from gui.widgets.testwidget import TestWidget
+from gui.widgets.customs.CustomBashConsole import CustomBashConsole
+from gui.widgets.customs.CustomTitleBar import CustomTitleBar
+from gui.widgets.customs.CustomFileManager import CustomFileManager
+from gui.widgets.customs.CustomPyConsole import CustomPyConsole
+from gui.widgets.customs.CustomDataContainer import CustomDataContainer
+from gui.widgets.customs.CustomTestWidget import CustomTestWidget
 from utils.loaders import load_icon
 
 
@@ -32,6 +32,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.right_container = None
         self.button_test = None
         self.button_pyconsole = None
         self.button_bash = None
@@ -81,6 +82,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             'open_project_explorer': self.open_project
         }
         return callbacks
+
     def setupIcons(self) -> None:
         self.icons = {
             'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
@@ -139,12 +141,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.centralwidget.setObjectName("centralwidget")
 
         self.container = self.setupUiMainFrame()
-        self.bash_console = BashConsoleWidget(self.current_workspace, self.container)
+        self.bash_console = CustomBashConsole(self.current_workspace, self.container)
+        self.bash_console.setVisible(False)
 
         python_installed = self.check_python_installed()
 
         if python_installed:
-            self.pyconsole = ConsoleWidget(self.current_workspace, self.container)
+            self.pyconsole = CustomPyConsole(self.current_workspace, self.container)
             self.pyconsole.setVisible(False)
         else:
             self.pyconsole = None
@@ -186,24 +189,48 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Buttons for toggling visibility
         self.button_hide_file_widget = QPushButton()
+        self.button_hide_file_widget.setObjectName("hide_file_widget_btn")
         self.button_hide_file_widget.setFixedSize(50, 40)
-        self.button_hide_file_widget.clicked.connect(self.toggle_file_widget_visibility)
+        self.button_hide_file_widget.clicked.connect(self.toggle_buttons_widget_visibility)
         self.button_hide_file_widget.setToolTip("Toggle File Widget")
+        self.button_hide_file_widget.setStyleSheet(
+            """
+            background-color: #b6cfce;
+            """
+        )
 
         self.button_bash = QPushButton(icon=self.icons.get('bash'))
+        self.button_bash.setObjectName("hide_bash_widget_btn")
         self.button_bash.setFixedSize(50, 40)
-        self.button_bash.clicked.connect(self.toggle_bash_widget_visibility)
+        self.button_bash.clicked.connect(self.toggle_buttons_widget_visibility)
         self.button_bash.setToolTip("Toggle Bash Console")
+        self.button_bash.setStyleSheet(
+            """
+            background-color: transparent;
+            """
+        )
 
         self.button_pyconsole = QPushButton(icon=self.icons.get('py'))
+        self.button_pyconsole.setObjectName("hide_pyconsole_widget_btn")
         self.button_pyconsole.setFixedSize(50, 40)
-        self.button_pyconsole.clicked.connect(self.toggle_pyconsole_widget_visibility)
+        self.button_pyconsole.clicked.connect(self.toggle_buttons_widget_visibility)
         self.button_pyconsole.setToolTip("Toggle Python Console")
+        self.button_pyconsole.setStyleSheet(
+            """
+            background-color: transparent;
+            """
+        )
 
         self.button_test = QPushButton(icon=self.icons.get('test_btn'))
+        self.button_test.setObjectName("hide_test_widget_btn")
         self.button_test.setFixedSize(50, 40)
-        self.button_test.clicked.connect(self.toggle_tests_widget_visibility)
+        self.button_test.clicked.connect(self.toggle_buttons_widget_visibility)
         self.button_test.setToolTip("Toggle tests")
+        self.button_test.setStyleSheet(
+            """
+            background-color: transparent;
+            """
+        )
 
         if not python_installed:
             self.button_pyconsole.setEnabled(False)
@@ -217,22 +244,24 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_toolbar_layout.addWidget(self.button_bash)
 
         self.left_toolbar_splitter = QSplitter(QtCore.Qt.Vertical)
-        self.test_widget = TestWidget(icons=[self.icons.get('success_question'),
-                                             self.icons.get('failed_question'),
-                                             self.icons.get('process_question')],
-                                      parent=self.left_container)
+        self.test_widget = CustomTestWidget(icons=[self.icons.get('success_question'),
+                                                   self.icons.get('failed_question'),
+                                                   self.icons.get('process_question')],
+                                            parent=self.left_container)
+        self.test_widget.setVisible(False)
+
         self.test_widget.set_scrollbar_value.connect(self.container.set_scrollbar_value)
         self.container.get_textboxes.connect(self.test_widget.updateIcons)
         self.container.show_tests.connect(self.test_widget.loadTests)
-        self.file_widget = FileManager(kwargs.get('path'), _MainWindow)
+
+        self.file_widget = CustomFileManager(kwargs.get('path'), _MainWindow)
+
         self.file_widget.file_selected.connect(self.container.update_content)
         self.file_widget.filepath_selected.connect(self.update_current_open_file)
 
-        # Add FileManager and TestWidget to the splitter
         self.left_toolbar_splitter.addWidget(self.file_widget)
         self.left_toolbar_splitter.addWidget(self.test_widget)
 
-        # Add splitter and left toolbar container to the left layout
         self.left_layout.addWidget(self.left_toolbar_container)
         self.left_layout.addWidget(self.left_toolbar_splitter)
 
@@ -298,7 +327,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         super().resizeEvent(event)
         self.title_bar.hide_file_path_label()
 
-
     def open_file_explorer(self, path=None):
         if not path:
             path = self.current_workspace
@@ -324,7 +352,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
          Setup the main frame of the main window .
         :return: QWidget
         """
-        container = ScrollableContainer(self.current_workspace)
+        container = CustomDataContainer(self.current_workspace, [self.saves_icons, self.buttons_name])
         container.setObjectName("MainContainer")
         return container
 
@@ -370,33 +398,41 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         else:
             QMessageBox.information(self, "File saved failed", "File type is not supported")
 
-    def toggle_file_widget_visibility(self):
-        file_widget = self.file_widget
-        if file_widget:
-            file_visible = not file_widget.isVisible()
-            file_widget.setVisible(file_visible)
-            self.adjust_container_sizes()
+    def toggle_buttons_widget_visibility(self) -> None:
+        """
+        Toggle the visibility of the buttons widget.
+        :return: None
+        """
 
-    def toggle_tests_widget_visibility(self):
-        file_widget = self.test_widget
-        if file_widget:
-            file_visible = not file_widget.isVisible()
-            file_widget.setVisible(file_visible)
-            self.adjust_container_sizes()
+        def toggle_visibility(_widget: QWidget, _button: QPushButton, _widget_name: str) -> None:
+            """
+            Toggle the visibility of the buttons widget.
+            :param: _widget: QWidget
+            :param: _button: QPushButton
+            :param: _widget_name: str
+            :return: None
+            """
+            if _widget:
+                visible: bool = not _widget.isVisible()
+                button_styleSheet: str = "background-color: #b6cfce;" if visible else "background-color: transparent;"
+                _widget.setVisible(visible)
+                _button.setStyleSheet(button_styleSheet)
 
-    def toggle_bash_widget_visibility(self):
-        file_widget = self.bash_console
-        if file_widget:
-            file_visible = not file_widget.isVisible()
-            file_widget.setVisible(file_visible)
-            self.adjust_container_sizes_()
+            if _widget_name in ['hide_file_widget_btn', 'hide_test_widget_btn']:
+                self.adjust_container_sizes()
+            else:
+                self.adjust_container_sizes_()
 
-    def toggle_pyconsole_widget_visibility(self):
-        file_widget = self.pyconsole
-        if file_widget:
-            file_visible = not file_widget.isVisible()
-            file_widget.setVisible(file_visible)
-            self.adjust_container_sizes_()
+        widget_name: str = self.sender().objectName()
+        widget_mapping = {
+            "hide_file_widget_btn": (self.file_widget, self.button_hide_file_widget),
+            "hide_test_widget_btn": (self.test_widget, self.button_test),
+            "hide_bash_widget_btn": (self.bash_console, self.button_bash),
+            "hide_pyconsole_widget_btn": (self.pyconsole, self.button_pyconsole),
+        }
+
+        widget, button = widget_mapping.get(widget_name, (None, None))
+        toggle_visibility(widget, button, _widget_name=widget_name)
 
     def adjust_container_sizes_(self):
         if self.pyconsole:
@@ -569,5 +605,5 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         #             self.reset(self.current_workspace)
 
     def reset(self, path=None):
-        self.file_widget = FileManager(path, self)
+        self.file_widget = CustomFileManager(path, self)
         self.container.reset()

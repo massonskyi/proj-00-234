@@ -1,3 +1,5 @@
+import os
+import sys
 from typing import List
 
 
@@ -15,7 +17,10 @@ def save_to_word(path: str, data: List, textboxes: List, result_data: List[List[
     except ImportError:
         return False, Exception('docx module is not installed')
 
-    data_ptr: dict | None = data[0].get('mdth', None)
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
+    data_ptr = data[0].get('mdth', None)
     if not data_ptr:
         return False, Exception('Data cannot be empty')
 
@@ -66,7 +71,10 @@ def save_to_excel(path: str, data: List, textboxes: List, result_data: List[List
     except ImportError:
         return False, Exception('Pandas is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -93,6 +101,7 @@ def save_to_excel(path: str, data: List, textboxes: List, result_data: List[List
             return True, None
 
 
+
 def save_to_pdf(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to pdf file
@@ -107,12 +116,14 @@ def save_to_pdf(path: str, data: List, textboxes: List, result_data: List[List[s
     except ImportError:
         return False, Exception('FPDF is not installed')
 
+    if not data:
+        return False, Exception('Data cannot be empty')
+
     data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
-    textboxes_ptr: List = textboxes
-    if not textboxes_ptr:
+    if not textboxes:
         return False, Exception('Text boxes cannot be empty')
 
     class PDF(FPDF):
@@ -131,37 +142,87 @@ def save_to_pdf(path: str, data: List, textboxes: List, result_data: List[List[s
     pdf = PDF()
     pdf.add_page()
 
-    font_path = './fonts/DejaVuSans.ttf'
-    bold_dejavu_path = './fonts/DejaVuSansBold.ttf'
 
-    pdf.add_font('DejaVu', '', font_path, uni=True)
-    pdf.add_font('DejaVu-Bold', '', bold_dejavu_path, uni=True)
-    pdf.set_font('DejaVu-Bold', '', 12)
+
+    if sys.platform.startswith('win32'):
+        arial_path = 'C:\\Windows\\Fonts\\arial.ttf'
+        arial_bold_path = 'C:\\Windows\\Fonts\\arialbd.ttf'
+
+        # Check if font files exist
+        if not os.path.isfile(arial_path):
+            return False, FileNotFoundError(f"Font file not found: {arial_path}")
+        if not os.path.isfile(arial_bold_path):
+            return False, FileNotFoundError(f"Bold font file not found: {arial_bold_path}")
+
+        pdf.add_font('Arial', '', arial_path, uni=True)
+        pdf.add_font('Arial-Bold', '', arial_bold_path, uni=True)
+        pdf.set_font('Arial-Bold', '', 12)
+
+        pdf.add_font('Arial', '', arial_path, uni=True)
+        pdf.add_font('Arial-Bold', '', arial_bold_path, uni=True)
+        pdf.set_font('Arial-Bold', '', 12)
+
+    if sys.platform.startswith('lin'):
+        current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+        font_dir = os.path.join(current_dir, 'fonts')
+        font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
+        bold_font_path = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+
+        # Debugging statements to ensure paths are correct
+        print(f"Current Directory: {current_dir}")
+        print(f"Font Directory: {font_dir}")
+        print(f"Regular Font Path: {font_path}")
+        print(f"Bold Font Path: {bold_font_path}")
+
+        # Check if font files exist
+        if not os.path.isfile(font_path):
+            return False, FileNotFoundError(f"Font file not found: {font_path}")
+
+        if not os.path.isfile(bold_font_path):
+            return False, FileNotFoundError(f"Bold font file not found: {bold_font_path}")
+
+        pdf.add_font('DejaVu', '', font_path, uni=True)
+        pdf.add_font('DejaVu-Bold', '', bold_font_path, uni=True)
+        pdf.set_font('DejaVu-Bold', '', 12)
 
     pdf.cell(200, 10, txt="Data from Textboxes", ln=True, align='C')
 
     for i, item in enumerate(data_prt):
-        text = f"{item.get('idx', '')} | {item.get('name', '')} | {textboxes_ptr[i].text()}"
-        pdf.set_font('DejaVu', '', 12)
+        text = f"{item.get('idx', '')} | {item.get('name', '')} | {textboxes[i].text()}"
+        if sys.platform.startswith('win32'):
+            pdf.set_font('Arial', '', 12)
+
+        if sys.platform.startswith('lin'):
+            pdf.set_font('DejaVu', '', 12)
+
         pdf.multi_cell(0, 10, txt=text)
 
     pdf.add_page()
-    pdf.set_font('DejaVu-Bold', '', 12)
+    if sys.platform.startswith('win32'):
+        pdf.set_font('Arial', '', 12)
+
+    if sys.platform.startswith('lin'):
+        pdf.set_font('DejaVu', '', 12)
     pdf.cell(200, 10, txt="Result Data", ln=True, align='C')
 
     for row in result_data:
         text = " | ".join(row)
-        pdf.set_font('DejaVu', '', 12)
+        if sys.platform.startswith('win32'):
+            pdf.set_font('Arial', '', 12)
+
+        if sys.platform.startswith('lin'):
+            pdf.set_font('DejaVu', '', 12)
         pdf.multi_cell(0, 10, txt=text)
 
     try:
-        pdf.output(f'{path}/export/Untitled.pdf')
+        output_dir = os.path.join(path, 'export')
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'Untitled.pdf')
+        pdf.output(output_path)
     except Exception as e:
-        return False, Exception(e)
+        return False, e
     else:
         return True, None
-
-
 def save_to_csv(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
     Save data to csv file with csv format
@@ -175,6 +236,9 @@ def save_to_csv(path: str, data: List, textboxes: List, result_data: List[List[s
         import csv
     except ImportError:
         return False, Exception('CSV module is not installed')
+
+    if data == []:
+        return False, Exception('Data cannot be empty')
 
     data_prt = data[0].get('mdth', None)
     if not data_prt:
@@ -217,7 +281,10 @@ def save_to_txt(path: str, data: List, textboxes: List, result_data: List[List[s
     :param result_data: Result data to save to txt file
     :return: True on success, False on failure + Exception
     """
-    data_prt: dict | None = data[0].get('mdth', None)
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -273,9 +340,13 @@ def save_to_xml(path: str, data: List, textboxes: List, result_data: List[List[s
     except ImportError:
         return False, Exception('XML is not installed')
 
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
     data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
+
 
     textboxes_ptr: List = textboxes
     if not textboxes_ptr:
@@ -321,7 +392,10 @@ def save_to_json(path: str, data: List, textboxes: List, result_data: List[List[
     except ImportError:
         return False, Exception('JSON is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
 
@@ -368,9 +442,13 @@ def save_to_html(path: str, data: List, textboxes: List, result_data: List[List[
     except ImportError:
         return False, Exception('Pandas is not installed')
 
-    data_prt: dict | None = data[0].get('mdth', None)
+    if data == []:
+        return False, Exception('Data cannot be empty')
+
+    data_prt = data[0].get('mdth', None)
     if not data_prt:
         return False, Exception('Data cannot be empty')
+
 
     textboxes_ptr: List = textboxes
     if not textboxes_ptr:
