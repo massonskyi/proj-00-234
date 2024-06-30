@@ -1,37 +1,34 @@
 import sys
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap, QMovie
-from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget, QSplashScreen
 
 from config.cfg import EXE_DIR
 
 
-class SplashScreen(QWidget):
-    def __init__(self):
+class SplashScreen(QLabel):
+    _finished = Signal()
+
+    def __init__(self, movie_file):
         super().__init__()
-        self.initUI()
+        self.movie = QMovie(movie_file)
+        self.setMovie(self.movie)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.movie.frameChanged.connect(self.check_if_finished)
+        self.resize(650, 500)
+        self.center()
+        self.setScaledContents(True)
 
-    def initUI(self):
-        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)  # Устанавливаем флаг Qt.WindowStaysOnTopHint
-        self.setAttribute(Qt.WA_TranslucentBackground)  # Делаем фон окна прозрачным (если нужно)
-
-        self.label = QLabel(self)
-        self.movie = QMovie(f"{EXE_DIR}\\assets\\start_screen.gif")
-        self.label.setMovie(self.movie)
-        self.label.setAlignment(Qt.AlignCenter)
-
-        vbox = QVBoxLayout(self)
-        vbox.addWidget(self.label)
-
-        self.setLayout(vbox)
-
+    def start(self):
         self.movie.start()
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_movie_playing)
-        self.timer.start(50)  # Проверяем каждые 50 мс
-
-    def check_movie_playing(self):
+    def check_if_finished(self):
         if self.movie.currentFrameNumber() == self.movie.frameCount() - 1:
             self.movie.stop()
             self.close()
+            self._finished.emit()
+
+    def center(self):
+        screen = QApplication.primaryScreen().geometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)

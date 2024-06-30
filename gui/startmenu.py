@@ -1,9 +1,9 @@
 import json
 import os
 
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Qt, QPoint
-from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget, QApplication
+from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget, QApplication, QLabel, QVBoxLayout, QHBoxLayout
 
 from gui.Threads.LoadThread import LoaderThread
 from gui.main_window import Ui_MainWindow
@@ -23,7 +23,7 @@ class Ui_StartMenu(QMainWindow):
         """
         super().__init__()
         # self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
-
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self._run_setup()
         self.title_bar = None
         self.setMaximumWidth(600)
@@ -40,7 +40,8 @@ class Ui_StartMenu(QMainWindow):
         self.open_project_button = None
         self.create_project_button = None
         self.setWindowTitle('Начало')
-
+        self.center()
+        self.resize(650, 500)
         self.stacked_widget = QtWidgets.QStackedWidget()
 
         self.icons = {
@@ -75,41 +76,47 @@ class Ui_StartMenu(QMainWindow):
         self.setupUi()
 
     def center(self):
-        available_geometry = QApplication.primaryScreen().availableGeometry()
+        screen = QApplication.primaryScreen().geometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
 
-        # Вычисляем центральное положение окна
-        window_width, window_height = self.width(), self.height()
-        x = (available_geometry.width() - window_width) // 2
-        y = (available_geometry.height() - window_height) // 2
-        return x, y
-
-    def setupUi(self) -> None:
+    def setupUi(self):
         central_widget = QWidget()
         self.setWindowTitle('project-00-234')
-        x, y = self.center()
-        self.setGeometry(x,y, 400, 800)
+
+        # Left image
+        image_label = QLabel()
+        pixmap = QtGui.QPixmap("D:\\project\\proj-00-234\\assets\\start_screen.jpg")  # Replace with the path to your image
+        image_label.setPixmap(pixmap)
+        image_label.setScaledContents(True)
+        image_label.setFixedSize(300, 600)
+
+        # Buttons
         self.create_project_button = self.create_button("Создать новый проект", self.show_create_project_form,
                                                         "#4CAF50")
         self.create_project_button.setFixedWidth(200)
-        self.open_project_button = self.create_button("Выбрать проект", self.show_open_project_form,
-                                                      "#008CBA")
+        self.open_project_button = self.create_button("Выбрать проект", self.show_open_project_form, "#008CBA")
         self.open_project_button.setFixedWidth(200)
         self.exit_button = self.create_button("Выход", self.close_window, "#5a9c9b")
         self.exit_button.setFixedWidth(200)
-        initial_layout = QtWidgets.QVBoxLayout()
-        initial_layout.addWidget(self.create_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
-        initial_layout.addWidget(self.open_project_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
-        initial_layout.addWidget(self.exit_button, alignment=QtCore.Qt.AlignCenter)  # Center align button
 
-        initial_widget = QtWidgets.QWidget()
+        initial_layout = QVBoxLayout()
+        initial_layout.addWidget(self.create_project_button, alignment=QtCore.Qt.AlignCenter)
+        initial_layout.addWidget(self.open_project_button, alignment=QtCore.Qt.AlignCenter)
+        initial_layout.addWidget(self.exit_button, alignment=QtCore.Qt.AlignCenter)
+
+        initial_widget = QWidget()
         initial_widget.setLayout(initial_layout)
         self.stacked_widget.addWidget(initial_widget)
 
         self.setup_create_project_form()
         self.setup_open_project_form()
 
-        main_layout = QtWidgets.QVBoxLayout()
+        # Main layout
+        main_layout = QHBoxLayout()
+        main_layout.addWidget(image_label)
         main_layout.addWidget(self.stacked_widget)
+
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
