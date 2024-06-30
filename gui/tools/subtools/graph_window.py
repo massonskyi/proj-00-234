@@ -7,11 +7,16 @@ class CustomGraphWidget:
     pass
 
 
+class QWidget:
+    pass
+
+
 class GraphWindow(QMainWindow):
     """
     Wrapper class for the graph window.
     """
-    def __init__(self, graph_widget: CustomGraphWidget, parent=None) -> None:
+
+    def __init__(self, graph_widget: CustomGraphWidget | QWidget, parent=None) -> None:
         """
         Initialise the graph window. This is called when the window is created.
         :param graph_widget: The graph widget.

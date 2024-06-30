@@ -40,37 +40,36 @@ class Ui_StartMenu(QMainWindow):
         self.open_project_button = None
         self.create_project_button = None
         self.setWindowTitle('Начало')
-        self.setGeometry(400, 500, 400, 300)
-        # self.move(self.center())
+
         self.stacked_widget = QtWidgets.QStackedWidget()
 
         self.icons = {
-            'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
-            'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
-            'open_full_folder': load_icon('./assets/folder/open_full_folder.png'),
-            'bash': load_icon('./assets/console/bash.png'),
-            'py': load_icon('./assets/console/py.png'),
-            'test_btn': load_icon('./assets/test/button.png'),
-            'success_question': load_icon('./assets/test/qs.png'),
-            'failed_question': load_icon('./assets/test/qc.png'),
-            'process_question': load_icon('./assets/test/qp.png'),
-            'menu_exit': load_icon('./assets/main/menu_exit.png'),
-            'menu_file': load_icon('./assets/main/menu_file.png'),
-            'menu_new': load_icon('./assets/main/menu_new.png'),
-            'menu_new_file': load_icon('./assets/main/menu_new_file.png'),
-            'menu_new_project': load_icon('./assets/main/menu_new_project.png'),
-            'menu_open': load_icon('./assets/main/menu_open.png'),
-            'menu_open_file': load_icon('./assets/main/menu_open_file.png'),
-            'menu_open_project': load_icon('./assets/main/menu_open_project.png'),
-            'menu_save': load_icon('./assets/main/menu_save.png'),
-            'menu_save_as': load_icon('./assets/main/menu_save_as.png'),
-            'menu_txt': load_icon('./assets/main/menu_txt.png'),
-            'main_menu': load_icon('./assets/main/main_menu.png'),
-            'button': load_icon('./assets/default/button.png'),
-            'minimize': load_icon('./assets/title/minimize.png'),
-            'maximize': load_icon('./assets/title/maximize.png'),
-            'close': load_icon('./assets/title/close.png'),
-            'title_main': load_icon('./assets/title_main.png'),
+            'hidden_folder': load_icon('\\assets\\folder\\hidden_folder.png'),
+            'open_clear_folder': load_icon('\\assets\\folder\\open_clear_folder.png'),
+            'open_full_folder': load_icon('\\assets\\folder\\open_full_folder.png'),
+            'bash': load_icon('\\assets\\console\\bash.png'),
+            'py': load_icon('\\assets\\console\\py.png'),
+            'test_btn': load_icon('\\assets\\test\\button.png'),
+            'success_question': load_icon('\\assets\\test\\qs.png'),
+            'failed_question': load_icon('\\assets\\test\\qc.png'),
+            'process_question': load_icon('\\assets\\test\\qp.png'),
+            'menu_exit': load_icon('\\assets\\main\\menu_exit.png'),
+            'menu_file': load_icon('\\assets\\main\\menu_file.png'),
+            'menu_new': load_icon('\\assets\\main\\menu_new.png'),
+            'menu_new_file': load_icon('\\assets\\main\\menu_new_file.png'),
+            'menu_new_project': load_icon('\\assets\\main\\menu_new_project.png'),
+            'menu_open': load_icon('\\assets\\main\\menu_open.png'),
+            'menu_open_file': load_icon('\\assets\\main\\menu_open_file.png'),
+            'menu_open_project': load_icon('\\assets\\main\\menu_open_project.png'),
+            'menu_save': load_icon('\\assets\\main\\menu_save.png'),
+            'menu_save_as': load_icon('\\assets\\main\\menu_save_as.png'),
+            'menu_txt': load_icon('\\assets\\main\\menu_txt.png'),
+            'main_menu': load_icon('\\assets\\main\\main_menu.png'),
+            'button': load_icon('\\assets\\default\\button.png'),
+            'minimize': load_icon('\\assets\\title\\minimize.png'),
+            'maximize': load_icon('\\assets\\title\\maximize.png'),
+            'close': load_icon('\\assets\\title\\close.png'),
+            'title_main': load_icon('\\assets\\title_main.png'),
         }
 
         self.setupUi()
@@ -82,13 +81,13 @@ class Ui_StartMenu(QMainWindow):
         window_width, window_height = self.width(), self.height()
         x = (available_geometry.width() - window_width) // 2
         y = (available_geometry.height() - window_height) // 2
-        return QPoint(x, y)
+        return x, y
 
     def setupUi(self) -> None:
         central_widget = QWidget()
         self.setWindowTitle('project-00-234')
-        self.setGeometry(100, 100, 400, 800)
-
+        x, y = self.center()
+        self.setGeometry(x,y, 400, 800)
         self.create_project_button = self.create_button("Создать новый проект", self.show_create_project_form,
                                                         "#4CAF50")
         self.create_project_button.setFixedWidth(200)
@@ -224,7 +223,7 @@ class Ui_StartMenu(QMainWindow):
     def check_main_dirs(self, path):
         import os
         if not os.path.exists(f"{path}/export"):
-            os.mkdir(f"{path}/export")
+            os.mkdir(f"{path}\\export")
 
     def create_project(self, dir_path, file_type="*") -> None:
         """

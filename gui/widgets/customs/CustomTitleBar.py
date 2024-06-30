@@ -35,14 +35,14 @@ class CustomTitleBar(QWidget):
         self.icons = icons
         self.style = MyProxyStyle('Fusion')
         self.saves_icons = {
-            'save_word': load_icon('./assets/save2/sword.png'),
-            'save_excel': load_icon('./assets/save2/sexcel.png'),
-            'save_pdf': load_icon('./assets/save2/spdf.png'),
-            'save_csv': load_icon('./assets/save2/scsv.png'),
-            'save_json': load_icon('./assets/save2/sjson.png'),
-            'save_html': load_icon('./assets/save2/shtml.png'),
-            'save_txt': load_icon('./assets/save2/stxt.png'),
-            'save_xml': load_icon('./assets/save2/sxml.png'),
+            'save_word': load_icon('\\assets\\save2\\sword.png'),
+            'save_excel': load_icon('\\assets\\save2\\sexcel.png'),
+            'save_pdf': load_icon('\\assets\\save2\\spdf.png'),
+            'save_csv': load_icon('\\assets\\save2\\scsv.png'),
+            'save_json': load_icon('\\assets\\save2\\sjson.png'),
+            'save_html': load_icon('\\assets\\save2\\shtml.png'),
+            'save_txt': load_icon('\\assets\\save2\\stxt.png'),
+            'save_xml': load_icon('\\assets\\save2\\sxml.png'),
         }
 
         self.setup_ui()

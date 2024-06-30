@@ -1,22 +1,28 @@
 import sys
+import time
 
+from PySide6.QtCore import QThread
+from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from gui.startmenu import Ui_StartMenu
+from gui.widgets.start_screen import SplashScreen
 
 
 def main():
     app = QApplication(sys.argv)
-
+    splash_screen = SplashScreen()
+    splash_screen.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+    splash_screen.show()
     try:
         if len(sys.argv) > 1:
             file_path = sys.argv[1]
             if not file_path.endswith('.mdth'):
                 QMessageBox.critical(None, "Error", "Этот файл невозможно открыть")
                 sys.exit(1)
-
             MainWindow = Ui_StartMenu()
             MainWindow.open_main_window_from_file(file_path)
+
         else:
             MainWindow = Ui_StartMenu()
             MainWindow.show()

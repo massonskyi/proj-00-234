@@ -8,12 +8,12 @@ from PySide6 import QtCore
 from PySide6.QtCore import (
     Qt,
     QEvent,
-    Signal
+    Signal, Slot, QSize
 )
 
 from PySide6.QtGui import (
     QPixmap,
-    QFont, QIntValidator
+    QFont, QIntValidator, QIcon, QStandardItem, QStandardItemModel, QPainter
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QMessageBox,
     QHeaderView,
-    QPushButton
+    QPushButton, QHBoxLayout, QComboBox, QListView, QStyledItemDelegate
 )
 
 from gui.Threads.CallbackThread import CallbackThread
@@ -47,9 +47,32 @@ from utils.s2f import (
     save_to_json,
     save_to_html,
     save_to_txt,
-    save_to_xml
+    save_to_xml, append_to_excel, append_to_word, append_to_pdf, append_to_csv, append_to_json, append_to_html,
+    append_to_txt, append_to_xml, load_mdth_file
 )
 
+class IconDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.text = ''
+
+    def paint(self, painter, option, index):
+        if index.data(Qt.DecorationRole).isNull():
+            return super().paint(painter, option, index)
+
+        pixmap = index.data(Qt.DecorationRole).pixmap(option.decorationSize)
+        target_rect = option.rect
+        target_rect.moveCenter(option.rect.center())
+
+        # Установка сглаживания
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        painter.drawPixmap(target_rect, pixmap)
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setWidth(option.decorationSize.width())
+        return size
 
 class CustomDataContainer(QWidget):
     """
@@ -58,7 +81,7 @@ class CustomDataContainer(QWidget):
     get_textboxes = Signal(list)  # list of textboxes
     show_tests = Signal(list)  # list of tests
     send_values = Signal(list)  # list of values
-
+    need_to_reset  = Signal()
     def __init__(self, path: str, icons: list, data: list = None, file_type: str = None, parent=None):
         """
         Initialize custom data container for custom data
@@ -69,6 +92,7 @@ class CustomDataContainer(QWidget):
         :param parent: parent widget to parent
         """
         super().__init__(parent)
+        self.continue_button = None
         self.calculate_button = None
         self.reset_button = None
         self.scroll_layout = None
@@ -87,8 +111,8 @@ class CustomDataContainer(QWidget):
         self.name_textboxes = []
         self.all_textboxes = []
         self.hidden_textboxes = []
-        self.callbacks = self._setup_callbacks()
-
+        self.save_callbacks = self._setup_save_callbacks()
+        self.append_callbacks = self._setup_append_callbacks()
         self.setupUi(file_type)
         self.get_textboxes.emit(self.name_textboxes)
 
@@ -115,18 +139,41 @@ class CustomDataContainer(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
 
         self.reset_button = self._create_button('Новый файл', self.reset, False)
+        self.continue_button = self._create_button('Продолжить', self.continue_work, False)
         self.calculate_button = self._create_button('Начать расчет', self.toggle_result_block, True)
+        self.combo_box = QComboBox()
+        self.combo_box.setVisible(False)
+        self.combo_box.setFixedSize(55, 55)
+        self.combo_box.setToolTip('Current save in file:')
+        # Устанавливаем ширину QComboBox равной размеру иконок
+        icon_size = QSize(35, 35)
 
+        model = QStandardItemModel()
+
+        for item, text in zip(self.icons.values(), self.append_callbacks.keys()):
+            item = QStandardItem(item, text)
+            item.setSizeHint(icon_size)
+            model.appendRow(item)
+
+        self.combo_box.setModel(model)
+        delegate = IconDelegate(self.combo_box)
+        self.combo_box.setItemDelegate(delegate)
+
+        # Устанавливаем размер иконок в выпадающем списке
+        self.combo_box.setIconSize(icon_size)
+        self.combo_box.currentIndexChanged.connect(self.on_combobox_changed)
         self.result_container = self._initalize_result_block()
 
         widget = QFrame()
         layout = QVBoxLayout()
-
+        sub_widget = QWidget()
+        sub_layout = QHBoxLayout(sub_widget)
         layout.addWidget(self.result_container)
-        layout.addWidget(self.reset_button)
-
+        sub_layout.addWidget(self.reset_button)
+        sub_layout.addWidget(self.continue_button)
+        sub_layout.addWidget(self.combo_box)
         widget.setLayout(layout)
-
+        layout.addWidget(sub_widget)
         main_layout.addWidget(self.scroll_area)
         main_layout.addWidget(widget)
 
@@ -143,9 +190,25 @@ class CustomDataContainer(QWidget):
         self.check_main_dirs(self.current_workspace)
         try:
             event: object = sender.objectName()
-            if event in self.callbacks:
-                self.callbacks[event](path=self.current_workspace, data=self.data, textboxes=self.all_textboxes,
-                                      result_data=self.result_data)
+            if event in self.save_callbacks:
+                self.save_callbacks[event](path=self.current_workspace, data=self.data, textboxes=self.all_textboxes,
+                                           result_data=self.result_data)
+            else:
+                QMessageBox.critical(self, 'Ошибка', "ErrorKey")
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', str(e))
+
+    def append(self) -> None:
+        """
+        Save custom data container to file system
+        :return: None
+        """
+        self.check_main_dirs(self.current_workspace)
+        try:
+            event = self.combo_box.currentText()
+            if event in self.append_callbacks:
+                self.append_callbacks[event](path=self.current_workspace, data=self.data, textboxes=self.all_textboxes,
+                                             result_data=self.result_data)
             else:
                 QMessageBox.critical(self, 'Ошибка', "ErrorKey")
         except Exception as e:
@@ -166,12 +229,39 @@ class CustomDataContainer(QWidget):
 
         self.result_table.setVisible(False)
         self.calculate_button.setVisible(True)
-
+        self.continue_button.setVisible(False)
+        self.combo_box.setVisible(False)
         self.result_container.hide()
         self.reset_button.hide()
         self.result_table.hide()
 
         self.update_ui(True)
+        self.scroll_area.verticalScrollBar().setValue(0)
+
+    def continue_work(self) -> None:
+        """
+        Continue the custom data container
+        :return: None
+        """
+        self.append()
+
+        self.data: List = []
+        self.result_data: List = []
+        self.textboxes: List = []
+        self.name_textboxes: List = []
+        self.all_textboxes: List = []
+        self.hidden_textboxes: List = []
+        self.is_show_block: bool = False
+
+        self.result_table.setVisible(False)
+        self.calculate_button.setVisible(True)
+        self.continue_button.setVisible(False)
+        self.combo_box.setVisible(False)
+        self.result_container.hide()
+        self.reset_button.hide()
+        self.result_table.hide()
+
+        self.need_to_reset.emit()
         self.scroll_area.verticalScrollBar().setValue(0)
 
     def check_scroll_position(self) -> None:
@@ -210,7 +300,8 @@ class CustomDataContainer(QWidget):
         self.result_table.setVisible(True)
         self.calculate_button.hide()
         self.reset_button.setVisible(True)
-
+        self.continue_button.setVisible(True)
+        self.combo_box.setVisible(True)
         self.update_data()
 
     def update_data(self) -> None:
@@ -220,19 +311,23 @@ class CustomDataContainer(QWidget):
         """
         self.update_result_data()
 
-        _value = []
+        self._value = []
 
         self.result_table.setRowCount(len(self.result_data))
         self.result_table.setColumnCount(len(self.result_data[0]) if self.result_data else 0)
         for row, row_data in enumerate(self.result_data):
             if len(row_data) >= 3:
-                _value.append(row_data[2])
+                self._value.append(row_data[2])
             for column, value in enumerate(row_data):
                 item: QTableWidgetItem = QTableWidgetItem(str(value))
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 self.result_table.setItem(row, column, item)
         self.result_table.resizeColumnsToContents()
-        self.send_values.emit(_value)
+        self.send_values.emit(self._value)
+
+    def resend_data(self) -> None:
+        if self._value:
+            self.send_values.emit(self._value)
 
     def show_result_block(self) -> None:
         """
@@ -377,7 +472,6 @@ class CustomDataContainer(QWidget):
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
-                # answer_textbox.setText("1")
 
                 if item["data"] == ("(Ввод числа)"):
                     answer_textbox.setValidator(int_validator)
@@ -393,7 +487,6 @@ class CustomDataContainer(QWidget):
         layout.addLayout(grid_layout)
 
     def _is_valid_string(self, s):
-        # Регулярное выражение для проверки допустимых символов
         pattern = r'^[\-\!\\"№;%\[\]/=_\.,\+]*$'
         return bool(re.match(pattern, s))
 
@@ -746,7 +839,8 @@ class CustomDataContainer(QWidget):
         return table_widget
 
     @staticmethod
-    def _create_button(name: str, callback: callable = None, set_visible: bool = False) -> QPushButton:
+    def _create_button(name: str, callback: callable = None, set_visible: bool = False,
+                       icon: QIcon = None) -> QPushButton:
         """
         Create button for custom data container for custom data
         :param name: string name of custom data container for custom data
@@ -758,7 +852,18 @@ class CustomDataContainer(QWidget):
         button.setObjectName(name)
         button.clicked.connect(callback)
         button.setVisible(set_visible)
+        if icon:
+            button.setIcon(icon=icon)
         return button
+
+    def _update_icon(self, widget: QWidget, icon: QIcon) -> None:
+        """
+        Update icon for custom data container for custom data container for custom data
+        :param widget: QWidget for custom data container for custom data
+        :param icon: QIcon icon for custom data container for custom data
+        :return: None
+        """
+        widget.setIcon(icon=icon)
 
     def _initalize_result_block(self) -> QFrame:
         """
@@ -783,7 +888,7 @@ class CustomDataContainer(QWidget):
         return result_container
 
     @staticmethod
-    def _setup_callbacks() -> dict:
+    def _setup_save_callbacks() -> dict:
         """
         Setup callbacks for custom data container for custom data
         :return: dict: callbacks for custom data container for custom data
@@ -800,10 +905,32 @@ class CustomDataContainer(QWidget):
         }
 
     @staticmethod
+    def _setup_append_callbacks() -> dict:
+        """
+        Setup callbacks for custom data container for custom data
+        :return: dict: callbacks for custom data container for custom data
+        """
+        return {
+            'append_word': append_to_word,
+            'append_excel': append_to_excel,
+            'append_pdf': append_to_pdf,
+            'append_csv': append_to_csv,
+            'append_json': append_to_json,
+            'append_html': append_to_html,
+            'append_txt': append_to_txt,
+            'append_xml': append_to_xml,
+        }
+
+    @staticmethod
     def check_main_dirs(path: str) -> None:
         """
         Check if main dirs exist in path
         """
         import os
-        if not os.path.exists(f"{path}/export"):
-            os.mkdir(f"{path}/export")
+        if not os.path.exists(f"{path}\\export"):
+            os.mkdir(f"{path}\\export")
+
+    @Slot(int)
+    def on_combobox_changed(self, index):
+        selected_item = self.combo_box.itemText(index)
+        print(f"Selected item: {selected_item}")

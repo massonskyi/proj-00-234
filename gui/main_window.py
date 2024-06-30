@@ -90,42 +90,44 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def setupIcons(self) -> None:
         self.icons = {
-            'hidden_folder': load_icon('./assets/folder/hidden_folder.png'),
-            'open_clear_folder': load_icon('./assets/folder/open_clear_folder.png'),
-            'open_full_folder': load_icon('./assets/folder/open_full_folder.png'),
-            'bash': load_icon('./assets/console/bash.png'),
-            'py': load_icon('./assets/console/py.png'),
-            'test_btn': load_icon('./assets/test/button.png'),
-            'success_question': load_icon('./assets/test/qs.png'),
-            'failed_question': load_icon('./assets/test/qc.png'),
-            'process_question': load_icon('./assets/test/qp.png'),
-            'menu_exit': load_icon('./assets/main/menu_exit.png'),
-            'menu_file': load_icon('./assets/main/menu_file.png'),
-            'menu_new': load_icon('./assets/main/menu_new.png'),
-            'menu_new_file': load_icon('./assets/main/menu_new_file.png'),
-            'menu_new_project': load_icon('./assets/main/menu_new_project.png'),
-            'menu_open': load_icon('./assets/main/menu_open.png'),
-            'menu_open_file': load_icon('./assets/main/menu_open_file.png'),
-            'menu_open_project': load_icon('./assets/main/menu_open_project.png'),
-            'menu_save': load_icon('./assets/main/menu_save.png'),
-            'menu_save_as': load_icon('./assets/main/menu_save_as.png'),
-            'menu_txt': load_icon('./assets/main/menu_txt.png'),
-            'main_menu': load_icon('./assets/main/main_menu.png'),
-            'minimize': load_icon('./assets/title/minimize.png'),
-            'maximize': load_icon('./assets/title/maximize.png'),
-            'close': load_icon('./assets/title/close.png'),
-            'title_main': load_icon('./assets/title_main.png'),
-            'graph': load_icon('./assets/folder/graph.png'),
+            'hidden_folder': load_icon('\\assets\\folder\\hidden_folder.png'),
+            'open_clear_folder': load_icon('\\assets\\folder\\open_clear_folder.png'),
+            'open_full_folder': load_icon('\\assets\\folder\\open_full_folder.png'),
+            'bash': load_icon('\\assets\\console\\bash.png'),
+            'py': load_icon('\\assets\\console\\py.png'),
+            'test_btn': load_icon('\\assets\\test\\button.png'),
+            'success_question': load_icon('\\assets\\test\\qs.png'),
+            'failed_question': load_icon('\\assets\\test\\qc.png'),
+            'process_question': load_icon('\\assets\\test\\qp.png'),
+            'menu_exit': load_icon('\\assets\\main\\menu_exit.png'),
+            'menu_file': load_icon('\\assets\\main\\menu_file.png'),
+            'menu_new': load_icon('\\assets\\main\\menu_new.png'),
+            'menu_new_file': load_icon('\\assets\\main\\menu_new_file.png'),
+            'menu_new_project': load_icon('\\assets\\main\\menu_new_project.png'),
+            'menu_open': load_icon('\\assets\\main\\menu_open.png'),
+            'menu_open_file': load_icon('\\assets\\main\\menu_open_file.png'),
+            'menu_open_project': load_icon('\\assets\\main\\menu_open_project.png'),
+            'menu_save': load_icon('\\assets\\main\\menu_save.png'),
+            'menu_save_as': load_icon('\\assets\\main\\menu_save_as.png'),
+            'menu_txt': load_icon('\\assets\\main\\menu_txt.png'),
+            'main_menu': load_icon('\\assets\\main\\main_menu.png'),
+            'minimize': load_icon('\\assets\\title\\minimize.png'),
+            'maximize': load_icon('\\assets\\title\\maximize.png'),
+            'close': load_icon('\\assets\\title\\close.png'),
+            'title_main': load_icon('\\assets\\title_main.png'),
+            'graph': load_icon('\\assets\\folder\\graph.png'),
+            'bar_chart': load_icon('\\assets\\default\\bar_chart.png'),
+            'function_f_graph': load_icon('\\assets\\default\\function_f_graph.png'),
         }
         self.saves_icons = {
-            'save_word': load_icon('./assets/save2/sword.png'),
-            'save_excel': load_icon('./assets/save2/sexcel.png'),
-            'save_pdf': load_icon('./assets/save2/spdf.png'),
-            'save_csv': load_icon('./assets/save2/scsv.png'),
-            'save_json': load_icon('./assets/save2/sjson.png'),
-            'save_html': load_icon('./assets/save2/shtml.png'),
-            'save_txt': load_icon('./assets/save2/stxt.png'),
-            'save_xml': load_icon('./assets/save2/sxml.png'),
+            'save_word': load_icon('\\assets\\save2\\sword.png'),
+            'save_excel': load_icon('\\assets\\save2\\sexcel.png'),
+            'save_pdf': load_icon('\\assets\\save2\\spdf.png'),
+            'save_csv': load_icon('\\assets\\save2\\scsv.png'),
+            'save_json': load_icon('\\assets\\save2\\sjson.png'),
+            'save_html': load_icon('\\assets\\save2\\shtml.png'),
+            'save_txt': load_icon('\\assets\\save2\\stxt.png'),
+            'save_xml': load_icon('\\assets\\save2\\sxml.png'),
         }
 
         self.buttons_name = {
@@ -237,7 +239,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             background-color: transparent;
             """
         )
-        self.button_graph_toggle  = QPushButton(icon=self.icons.get('graph'))
+
+        self.button_graph_toggle = QPushButton(icon=self.icons.get('graph'))
         self.button_graph_toggle.setObjectName("toggle_graph_btn")
         self.button_graph_toggle.setFixedSize(50, 40)
         self.button_graph_toggle.clicked.connect(self.toggle_buttons_widget_visibility)
@@ -268,11 +271,30 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.test_widget.setVisible(False)
 
         self.graph_widget = CustomGraphWidget(parent=self.left_container)
-        self.graph_widget.setVisible(False)
         self.graph_widget.mouseDoubleClickEvent = self.graph_double_click_event
 
+        self.graph_widget_histogram_btn = QPushButton(icon=self.icons.get('bar_chart'))
+        self.graph_widget_histogram_btn.setObjectName("graph_widget_histogram_btn")
+        self.graph_widget_histogram_btn.setFixedSize(50, 40)
+        self.graph_widget_histogram_btn.clicked.connect(self.draw_histogram)
+        self.graph_widget_histogram_btn.setToolTip("Toggle File Widget")
+        self.graph_widget_histogram_btn.setStyleSheet(
+            """
+            background-color: #b6cfce;
+            """
+        )
+        self.graph_widget_grapf_fucntion_button = QPushButton(icon=self.icons.get('function_f_graph'))
+        self.graph_widget_grapf_fucntion_button.setObjectName("graph_widget_grapf_fucntion_button")
+        self.graph_widget_grapf_fucntion_button.setFixedSize(50, 40)
+        self.graph_widget_grapf_fucntion_button.clicked.connect(self.draw_graph)
+        self.graph_widget_grapf_fucntion_button.setToolTip("Toggle File Widget")
+        self.graph_widget_grapf_fucntion_button.setStyleSheet(
+            """
+            background-color: #b6cfce;
+            """
+        )
         self.test_widget.set_scrollbar_value.connect(self.container.set_scrollbar_value)
-        self.container.send_values.connect(self.graph_widget.plot)
+        self.container.send_values.connect(self.graph_widget.plot_histogram)
         self.container.get_textboxes.connect(self.test_widget.updateIcons)
         self.container.show_tests.connect(self.test_widget.loadTests)
 
@@ -281,9 +303,22 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.file_widget.file_selected.connect(self.container.update_content)
         self.file_widget.filepath_selected.connect(self.update_current_open_file)
 
+        self.container.need_to_reset.connect(lambda: self.file_widget.load_file(self.current_open_file))
+        self.graph_box_widget = QWidget()
+        layout = QHBoxLayout(self.graph_box_widget)
+        btn_widget = QWidget()
+        btn_layout = QVBoxLayout(btn_widget)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setAlignment(QtCore.Qt.AlignTop)
+        btn_layout.addWidget(self.graph_widget_histogram_btn)
+        btn_layout.addWidget(self.graph_widget_grapf_fucntion_button)
+        layout.addWidget(btn_widget)
+        layout.addWidget(self.graph_widget)
+        self.graph_box_widget.setVisible(False)
+
         self.left_toolbar_splitter.addWidget(self.file_widget)
         self.left_toolbar_splitter.addWidget(self.test_widget)
-        self.left_toolbar_splitter.addWidget(self.graph_widget)
+        self.left_toolbar_splitter.addWidget(self.graph_box_widget)
 
         self.left_layout.addWidget(self.left_toolbar_container)
         self.left_layout.addWidget(self.left_toolbar_splitter)
@@ -335,6 +370,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.adjust_container_sizes_()
 
         _MainWindow.setWindowTitle("Main Window")
+
+    def draw_histogram(self):
+        self.container.send_values.disconnect()
+        self.container.send_values.connect(self.graph_widget.plot_histogram)
+        self.container.resend_data()
+
+    def draw_graph(self):
+        self.container.send_values.disconnect()
+        self.container.send_values.connect(self.graph_widget.plot)
+        self.container.resend_data()
 
     def check_python_installed(self):
         try:
@@ -443,7 +488,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
             if _widget_name in ['hide_file_widget_btn', 'hide_test_widget_btn', 'toggle_graph_btn']:
                 self.adjust_container_sizes()
-            elif  _widget_name in ['show_file_widget_btn', 'show_test_widget_btn']:
+                if _widget_name == 'toggle_graph_btn' and _widget.isVisible:
+                    self.container.resend_data()
+                elif _widget_name == 'toggle_graph_btn' and not _widget.isVisible:
+                    self.graph_widget.clear()
+            elif _widget_name in ['show_file_widget_btn', 'show_test_widget_btn']:
                 self.adjust_container_sizes_()
 
         widget_name: str = self.sender().objectName()
@@ -452,7 +501,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             "hide_test_widget_btn": (self.test_widget, self.button_test),
             "hide_bash_widget_btn": (self.bash_console, self.button_bash),
             "hide_pyconsole_widget_btn": (self.pyconsole, self.button_pyconsole),
-            "toggle_graph_btn": (self.graph_widget, self.button_graph_toggle)
+            "toggle_graph_btn": (self.graph_box_widget, self.button_graph_toggle),
         }
 
         widget, button = widget_mapping.get(widget_name, (None, None))
@@ -543,7 +592,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         if file_path:
             try:
                 import json
-                with open(f"{os.path.dirname(file_path)}/configuration_config_mdt.json", "r", encoding="utf-8") as file:
+                with open(f"{os.path.dirname(file_path)}\\configuration_config_mdt.json", "r", encoding="utf-8") as file:
                     data = json.load(file)
 
                 from utils.s2f import generate_mdth_file
@@ -638,13 +687,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def open_graph_in_new_window(self):
         # Remove from main window
-        self.graph_widget.setParent(None)
+        self.graph_box_widget.setParent(None)
 
         # Create and show the new graph window
-        self.graph_window = GraphWindow(self.graph_widget, self)
+        self.graph_window = GraphWindow(self.graph_box_widget, self)
         self.graph_window.show()
 
     def _add_graph(self):
         # Restore graph widget to the main window
-        self.graph_widget.setParent(None)  # Remove from any current parent
-        self.left_toolbar_splitter.addWidget(self.graph_widget)
+        self.graph_box_widget.setParent(None)  # Remove from any current parent
+        self.left_toolbar_splitter.addWidget(self.graph_box_widget)
