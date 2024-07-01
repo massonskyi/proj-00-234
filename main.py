@@ -8,7 +8,7 @@ from config.cfg import EXE_DIR
 from gui.startmenu import Ui_StartMenu
 from gui.widgets.start_screen import SplashScreen
 
-
+# pyinstaller --onefile --noconsole --name project-00-234 --icon=/home/user064/PycharmProjects/proj-00-234/assets/icon.ico --add-data ./assets:assets --add-data ./fonts:fonts main.py
 def get_resource_path(relative_path) -> LiteralString | str | bytes:
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
