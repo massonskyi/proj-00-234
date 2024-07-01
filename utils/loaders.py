@@ -12,11 +12,12 @@ def load_icon(filename: str) -> QIcon:
     :param filename: Name of the icon file
     :return: QIcon object
     """
-
-    # Construct the full path to the icon file
-    full_path = EXE_DIR + filename
-    pixmap = QPixmap(full_path)
+    pixmap = QPixmap(filename)
     if not pixmap.isNull():
-        pixmap = pixmap.scaled(30, 30, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        return QIcon(pixmap)
-    return QIcon()  # Return an empty icon if loading fails
+        return QIcon(pixmap.scaled(
+            30,
+            30,
+            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+            QtCore.Qt.TransformationMode.SmoothTransformation
+        ))
+    return QIcon()

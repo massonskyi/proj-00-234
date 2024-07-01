@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import pandas as pd
 import pdfplumber
@@ -8,9 +9,10 @@ from PySide6 import (
 )
 from PySide6.QtCore import (
     Signal,
-    QModelIndex
+    QModelIndex, Slot
 )
 from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QMessageBox
 from docx import Document
 
 from utils.s2f import load_mdth_file
@@ -72,42 +74,7 @@ class CustomFileManager(QtWidgets.QWidget):
         """
         if file_path:
             self.filepath_selected.emit(file_path)
-            data = []
-            file_ext: str = file_path.lower()
-
-            if file_ext.endswith('.mdth'):
-                data = [{"mdth": load_mdth_file(file_path)}]
-            elif file_ext.endswith(('.png', '.jpg', '.bmp')):
-                data = [{'image_path': file_path}]
-            elif file_ext.endswith('.csv'):
-                data = pd.read_csv(file_path).to_dict(orient='records')
-            elif file_ext.endswith('.xlsx') or file_ext.endswith('.xls'):
-                data = pd.read_excel(file_path).to_dict(orient='records')
-            elif file_ext.endswith('.docx'):
-                doc: Document = Document(file_path)
-                data_temp: list = []
-                for table in doc.tables:
-                    table_data: list = []
-                    for row in table.rows:
-                        row_data: list = []
-                        for cell in row.cells:
-                            row_data.append(cell.text)
-                        table_data.append(row_data)
-                    data_temp.append(table_data)
-                data = [{"dataword": data_temp}]
-
-            elif file_ext.endswith('.pdf'):
-                with pdfplumber.open(file_path) as pdf:
-                    tmp: list = []
-                    for page in pdf.pages:
-                        tmp.append(page.extract_text())
-
-                    data = [{"pdf": tmp}]
-            else:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data.append(f.read())
-
-            self.file_selected.emit(data)
+            self.file_selected.emit(self._load_data(file_path))
 
     def select_file(self, index: QModelIndex) -> None:
         """
@@ -123,42 +90,7 @@ class CustomFileManager(QtWidgets.QWidget):
 
         if file_path:
             self.filepath_selected.emit(file_path)
-            data = []
-            file_ext: str = file_path.lower()
-
-            if file_ext.endswith('.mdth'):
-                data = [{"mdth": load_mdth_file(file_path)}]
-            elif file_ext.endswith(('.png', '.jpg', '.bmp')):
-                data = [{'image_path': file_path}]
-            elif file_ext.endswith('.csv'):
-                data = pd.read_csv(file_path).to_dict(orient='records')
-            elif file_ext.endswith('.xlsx') or file_ext.endswith('.xls'):
-                data = pd.read_excel(file_path).to_dict(orient='records')
-            elif file_ext.endswith('.docx'):
-                doc: Document = Document(file_path)
-                data_temp: list = []
-                for table in doc.tables:
-                    table_data: list = []
-                    for row in table.rows:
-                        row_data: list = []
-                        for cell in row.cells:
-                            row_data.append(cell.text)
-                        table_data.append(row_data)
-                    data_temp.append(table_data)
-                data = [{"dataword": data_temp}]
-
-            elif file_ext.endswith('.pdf'):
-                with pdfplumber.open(file_path) as pdf:
-                    tmp: list = []
-                    for page in pdf.pages:
-                        tmp.append(page.extract_text())
-
-                    data = [{"pdf": tmp}]
-            else:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data.append(f.read())
-
-            self.file_selected.emit(data)
+            self.file_selected.emit(self._load_data(file_path))
 
     def open_menu(self, position: QtCore.QPoint) -> None:
         """
@@ -232,3 +164,72 @@ class CustomFileManager(QtWidgets.QWidget):
         if ok and new_name:
             new_path = os.path.join(os.path.dirname(file_path), new_name)
             os.rename(file_path, new_path)
+
+    @Slot(str)
+    def change_directory(self, path: str) -> None:
+        """
+        Change the directory manager.
+        :param path: path of the selected file
+        :return: None
+        """
+        self.tree.setRootIndex(self.model.index(path))
+
+    def copy_item(self) -> None:
+        """
+        Copy the selected file.
+        :return: None
+        """
+        index: QModelIndex = self.tree.currentIndex()
+        if not index.isValid():
+            return
+
+        file_path: str = self.model.filePath(index)
+        from utils.s2f import copy_file
+        res, err = copy_file(file_path)
+        if err:
+            QMessageBox.warning(self, "Warning", err)
+            return
+
+    @staticmethod
+    def _load_data(file_path: str) -> list:
+        """
+        Load the file to the widget.
+        :param file_path: path of the file to be loaded
+        :return: None
+        """
+        data = []
+        file_ext: str = file_path.lower()
+
+        if file_ext.endswith('.mdth'):
+            data = [{"mdth": load_mdth_file(file_path)}]
+        elif file_ext.endswith(('.png', '.jpg', '.bmp')):
+            data = [{'image_path': file_path}]
+        elif file_ext.endswith('.csv'):
+            data = pd.read_csv(file_path).to_dict(orient='records')
+        elif file_ext.endswith('.xlsx') or file_ext.endswith('.xls'):
+            data = pd.read_excel(file_path).to_dict(orient='records')
+        elif file_ext.endswith('.docx'):
+            doc: Document = Document(file_path)
+            data_temp: list = []
+            for table in doc.tables:
+                table_data: list = []
+                for row in table.rows:
+                    row_data: list = []
+                    for cell in row.cells:
+                        row_data.append(cell.text)
+                    table_data.append(row_data)
+                data_temp.append(table_data)
+            data = [{"dataword": data_temp}]
+
+        elif file_ext.endswith('.pdf'):
+            with pdfplumber.open(file_path) as pdf:
+                tmp: list = []
+                for page in pdf.pages:
+                    tmp.append(page.extract_text())
+
+                data = [{"pdf": tmp}]
+        else:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data.append(f.read())
+
+        return data

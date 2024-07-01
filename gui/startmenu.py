@@ -9,6 +9,7 @@ from gui.Threads.LoadThread import LoaderThread
 from gui.main_window import Ui_MainWindow
 from gui.widgets.customs.CustomLoadingWindow import LoadingWindow
 from utils.loaders import load_icon
+from utils.s2f import check_main_dirs
 from utils.tools import check_configuration, remove_pycache_dirs
 
 
@@ -17,7 +18,7 @@ class Ui_StartMenu(QMainWindow):
     Стартовое меню с вариантами выбора.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, assets: dict) -> None:
         """
         Initializes the start menu.
         """
@@ -43,35 +44,8 @@ class Ui_StartMenu(QMainWindow):
         self.center()
         self.resize(650, 500)
         self.stacked_widget = QtWidgets.QStackedWidget()
-
-        self.icons = {
-            'hidden_folder': load_icon('\\assets\\folder\\hidden_folder.png'),
-            'open_clear_folder': load_icon('\\assets\\folder\\open_clear_folder.png'),
-            'open_full_folder': load_icon('\\assets\\folder\\open_full_folder.png'),
-            'bash': load_icon('\\assets\\console\\bash.png'),
-            'py': load_icon('\\assets\\console\\py.png'),
-            'test_btn': load_icon('\\assets\\test\\button.png'),
-            'success_question': load_icon('\\assets\\test\\qs.png'),
-            'failed_question': load_icon('\\assets\\test\\qc.png'),
-            'process_question': load_icon('\\assets\\test\\qp.png'),
-            'menu_exit': load_icon('\\assets\\main\\menu_exit.png'),
-            'menu_file': load_icon('\\assets\\main\\menu_file.png'),
-            'menu_new': load_icon('\\assets\\main\\menu_new.png'),
-            'menu_new_file': load_icon('\\assets\\main\\menu_new_file.png'),
-            'menu_new_project': load_icon('\\assets\\main\\menu_new_project.png'),
-            'menu_open': load_icon('\\assets\\main\\menu_open.png'),
-            'menu_open_file': load_icon('\\assets\\main\\menu_open_file.png'),
-            'menu_open_project': load_icon('\\assets\\main\\menu_open_project.png'),
-            'menu_save': load_icon('\\assets\\main\\menu_save.png'),
-            'menu_save_as': load_icon('\\assets\\main\\menu_save_as.png'),
-            'menu_txt': load_icon('\\assets\\main\\menu_txt.png'),
-            'main_menu': load_icon('\\assets\\main\\main_menu.png'),
-            'button': load_icon('\\assets\\default\\button.png'),
-            'minimize': load_icon('\\assets\\title\\minimize.png'),
-            'maximize': load_icon('\\assets\\title\\maximize.png'),
-            'close': load_icon('\\assets\\title\\close.png'),
-            'title_main': load_icon('\\assets\\title_main.png'),
-        }
+        self.assets = assets
+        self.icons = assets.get('icons')
 
         self.setupUi()
 
@@ -86,7 +60,7 @@ class Ui_StartMenu(QMainWindow):
 
         # Left image
         image_label = QLabel()
-        pixmap = QtGui.QPixmap("D:\\project\\proj-00-234\\assets\\start_screen.jpg")  # Replace with the path to your image
+        pixmap = QtGui.QPixmap(self.icons.get('start_screen_pixmap'))  # Replace with the path to your image
         image_label.setPixmap(pixmap)
         image_label.setScaledContents(True)
         image_label.setFixedSize(300, 600)
@@ -227,11 +201,6 @@ class Ui_StartMenu(QMainWindow):
         if dir_path:
             self.create_project(dir_path)
 
-    def check_main_dirs(self, path):
-        import os
-        if not os.path.exists(f"{path}/export"):
-            os.mkdir(f"{path}\\export")
-
     def create_project(self, dir_path, file_type="*") -> None:
         """
         Creates a project directory and saves project information to a .projmd file.
@@ -239,26 +208,14 @@ class Ui_StartMenu(QMainWindow):
         :param file_type: Selected file type for the project.
         :return: None
         """
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        from utils.s2f import create_project
 
-        project_data = {
-            "directory": dir_path,
-            "file_type": file_type
-        }
+        res, err = create_project(dir_path, file_type)
+        if err:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось создать проект\n{err}")
+            return
 
-        projmd_file = os.path.join(dir_path, "proj.projmd")
-        with open(projmd_file, 'w') as f:
-            json.dump(project_data, f, indent=4)
-
-        from utils.configuration_config_mdt import ConfigurationMDTH
-        try:
-            ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-        else:
-            print("Configuration file created successfully.")
-        self.check_main_dirs(dir_path)
+        check_main_dirs(dir_path)
         if file_type:
             self.open_main_window(dir_path, file_type)
 
@@ -269,79 +226,38 @@ class Ui_StartMenu(QMainWindow):
         """
         dir_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
         if dir_path:
-            projmd_file = os.path.join(dir_path, "proj.projmd")
-            config_file = os.path.join(dir_path, "configuration_config_mdt.json")
-            if os.path.exists(projmd_file):
-                with open(projmd_file, 'r') as f:
-                    project_data = json.load(f)
-            else:
-                project_data = {
-                    "directory": dir_path,
-                    "file_type": "*"
-                }
+            from utils.s2f import open_project
+            project_data, err = open_project(dir_path)
+            if err:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
+                return
 
-                with open(projmd_file, 'w') as f:
-                    json.dump(project_data, f, indent=4)
+            check_main_dirs(dir_path)
+            self.open_main_window(project_data['directory'], project_data.get('file_type'))
 
-            if not os.path.exists(config_file):
-                from utils.configuration_config_mdt import ConfigurationMDTH
-                try:
-                    ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", str(e))
-                    return
-            self.check_main_dirs(dir_path)
-            if os.path.exists(projmd_file) and os.path.exists(config_file):
-                self.open_main_window(project_data['directory'], project_data.get('file_type'))
-
-    def open_main_window(self, project_path, file_type=None) -> None:
+    def open_main_window(self, project_path: str, file_type: str = None, from_file: bool = False) -> None:
         """
         Opens the main window.
         :param project_path: The path to the project.
         :param file_type: The file type.
+        :param from_file: Whether the main window is from file or from main window.
         :return: None
         """
+        self.main_window = Ui_MainWindow(assets=self.assets.copy(), **{'path': project_path, 'ft': file_type})
+        if from_file:
+            from utils.s2f import open_project
+            project_data, err = open_project(project_path)
+            if err:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
+                return
+            check_main_dirs(project_path)
+            self.main_window.load_open_file_signal.emit(project_path)
 
-        self.main_window = Ui_MainWindow(**{'path': project_path, 'ft': file_type})
         self.main_window.show()
 
         if self.isVisible():
             self.close()
-
-    def open_main_window_from_file(self, project_path, file_type=None) -> None:
-        """
-        Opens the main window. from file
-        :param project_path: The path to the project.
-        :param file_type: The file type.
-        :return: None
-        """
-        dir_path  = os.path.dirname(project_path)
-        if dir_path:
-            projmd_file = os.path.join(dir_path, "proj.projmd")
-            config_file = os.path.join(dir_path, "configuration_config_mdt.json")
-
-            project_data = {
-                "directory": dir_path,
-                "file_type": "*"
-            }
-
-            with open(projmd_file, 'w') as f:
-                json.dump(project_data, f, indent=4)
-
-            from utils.configuration_config_mdt import ConfigurationMDTH
-            try:
-                ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
-            except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
-                return
-            self.check_main_dirs(dir_path)
-            if os.path.exists(projmd_file) and os.path.exists(config_file):
-                self.main_window = Ui_MainWindow(**{'path': dir_path, 'ft': file_type})
-                self.main_window.file_widget.load_file(project_path)
-                self.main_window.show()
-
-        if self.isVisible():
-            self.close()
+            self.assets = None
 
     def _run_setup(self) -> None:
         self._thread_check_configuration()

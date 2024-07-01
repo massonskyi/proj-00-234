@@ -8,7 +8,7 @@ from PySide6 import QtCore
 from PySide6.QtCore import (
     Qt,
     QEvent,
-    Signal, Slot, QSize
+    Signal, Slot, QSize, QRect
 )
 
 from PySide6.QtGui import (
@@ -51,6 +51,7 @@ from utils.s2f import (
     append_to_txt, append_to_xml, load_mdth_file
 )
 
+
 class IconDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
@@ -61,11 +62,11 @@ class IconDelegate(QStyledItemDelegate):
             return super().paint(painter, option, index)
 
         pixmap = index.data(Qt.DecorationRole).pixmap(option.decorationSize)
-        target_rect = option.rect
-        target_rect.moveCenter(option.rect.center())
 
-        # Установка сглаживания
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        # Calculate target rectangle while maintaining aspect ratio
+        target_rect = QRect(option.rect)
+        target_rect.setSize(pixmap.size().scaled(option.rect.size(), Qt.KeepAspectRatio))
+        target_rect.moveCenter(option.rect.center())
 
         painter.drawPixmap(target_rect, pixmap)
 
@@ -81,8 +82,16 @@ class CustomDataContainer(QWidget):
     get_textboxes = Signal(list)  # list of textboxes
     show_tests = Signal(list)  # list of tests
     send_values = Signal(list)  # list of values
-    need_to_reset  = Signal()
-    def __init__(self, path: str, icons: list, data: list = None, file_type: str = None, parent=None):
+    need_to_reset = Signal()
+
+    def __init__(
+            self,
+            path: str,
+            icons: list,
+            data: list = None,
+            file_type: str = None,
+            parent=None
+    ):
         """
         Initialize custom data container for custom data
         :param path: path to project path
@@ -92,6 +101,7 @@ class CustomDataContainer(QWidget):
         :param parent: parent widget to parent
         """
         super().__init__(parent)
+        self._value = []
         self.continue_button = None
         self.calculate_button = None
         self.reset_button = None
@@ -143,10 +153,10 @@ class CustomDataContainer(QWidget):
         self.calculate_button = self._create_button('Начать расчет', self.toggle_result_block, True)
         self.combo_box = QComboBox()
         self.combo_box.setVisible(False)
-        self.combo_box.setFixedSize(55, 55)
+        self.combo_box.setFixedSize(80, 30)
         self.combo_box.setToolTip('Current save in file:')
         # Устанавливаем ширину QComboBox равной размеру иконок
-        icon_size = QSize(35, 35)
+        icon_size = QSize(64, 20)
 
         model = QStandardItemModel()
 
@@ -466,14 +476,12 @@ class CustomDataContainer(QWidget):
                 continue
 
             if item["data"] != " ":
-                try:
-                    _ = int(item["data"])
-                except ValueError:
+                if item["data"] == "(Ввод числа)" or item["data"] == "(Ввод текста)":
                     answer_textbox.setPlaceholderText(item["data"])
                 else:
                     answer_textbox.setText(item["data"])
 
-                if item["data"] == ("(Ввод числа)"):
+                if item["data"] == "(Ввод числа)":
                     answer_textbox.setValidator(int_validator)
 
                 answer_textbox.installEventFilter(self)
@@ -927,8 +935,8 @@ class CustomDataContainer(QWidget):
         Check if main dirs exist in path
         """
         import os
-        if not os.path.exists(f"{path}\\export"):
-            os.mkdir(f"{path}\\export")
+        if not os.path.exists(os.path.join(path, 'export')):
+            os.mkdir(os.path.join(path, 'export'))
 
     @Slot(int)
     def on_combobox_changed(self, index):

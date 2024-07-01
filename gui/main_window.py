@@ -3,26 +3,29 @@ import subprocess
 import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
-from PySide6.QtCore import QPoint
 from PySide6.QtGui import Qt
 from PySide6.QtWidgets import QVBoxLayout, QPushButton, QWidget, QSplitter, QFrame, QHBoxLayout, QFileDialog, \
-    QMessageBox, QMainWindow, QApplication
+    QMessageBox
 
 from gui.tools.subtools.graph_window import GraphWindow
 from gui.widgets.customs.CustomBashConsole import CustomBashConsole
-from gui.widgets.customs.CustomGraphWidget import CustomGraphWidget
-from gui.widgets.customs.CustomTitleBar import CustomTitleBar
-from gui.widgets.customs.CustomFileManager import CustomFileManager
-from gui.widgets.customs.CustomPyConsole import CustomPyConsole
 from gui.widgets.customs.CustomDataContainer import CustomDataContainer
+from gui.widgets.customs.CustomFileManager import CustomFileManager
+from gui.widgets.customs.CustomGraphWidget import CustomGraphWidget
+from gui.widgets.customs.CustomPyConsole import CustomPyConsole
 from gui.widgets.customs.CustomTestWidget import CustomTestWidget
-from utils.loaders import load_icon
+from gui.widgets.customs.CustomTitleBar import CustomTitleBar
+from utils.s2f import check_main_dirs
 
 
 class Ui_MainWindow(QtWidgets.QMainWindow):
     """
     Main window class
     """
+
+    _change_directory_signal = QtCore.Signal(str)
+    _load_open_file_signal = QtCore.Signal(str)
+
     position_widgets = {
         "title_bar": [0, 0, 1, 2],
         "main_container": [1, 1, 2, 1],
@@ -30,11 +33,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         "left_toolbar": [1, 0],
     }
 
-    def __init__(self, parent: QtWidgets.QWidget = None, *args, **kwargs) -> None:
+    def __init__(self, assets: dict, parent: QtWidgets.QWidget = None, *args, **kwargs) -> None:
         """
         Initialize the main window
         """
         super(Ui_MainWindow, self).__init__(parent)
+        self.graph_window = None
+        self.graph_widget_grapf_fucntion_button = None
+        self.graph_widget_histogram_btn = None
+        self.test_widget = None
+        self.graph_box_widget = None
+        self.left_toolbar_splitter = None
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.icons = assets.get("icons", {})
         self.graph_widget = None
         self.button_graph_toggle = None
         self.right_container = None
@@ -42,12 +53,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_pyconsole = None
         self.button_bash = None
         self.left_layout = None
-        self.saves_icons = None
-        self.icons = None
-        self.buttons_name = None
+        self.saves_icons = assets.get("saves_icons", {}).copy()
+        self.buttons_name = assets.get("btn_names", {}).copy()
         self.splitter_block = None
-        self.setupIcons()
-        self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
 
         self.splitter = None
         self.left_container = None
@@ -65,11 +73,11 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.right_toolbar_layout = None
         self.gridLayout = None
         self.centralwidget = None
-        self.assets_path = "./assets"
         self.current_open_file = ''
         self.setupUi(self, *args, **kwargs)
         callbacks = self.configureCallbacks()
-        self.title_bar = CustomTitleBar(self.icons, callbacks=callbacks, parent=self)
+        self.title_bar = CustomTitleBar(saves_icons=self.saves_icons, icons=self.icons, callbacks=callbacks,
+                                        parent=self)
         self.setMenuWidget(self.title_bar)
 
     def configureCallbacks(self) -> dict:
@@ -88,58 +96,19 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         }
         return callbacks
 
-    def setupIcons(self) -> None:
-        self.icons = {
-            'hidden_folder': load_icon('\\assets\\folder\\hidden_folder.png'),
-            'open_clear_folder': load_icon('\\assets\\folder\\open_clear_folder.png'),
-            'open_full_folder': load_icon('\\assets\\folder\\open_full_folder.png'),
-            'bash': load_icon('\\assets\\console\\bash.png'),
-            'py': load_icon('\\assets\\console\\py.png'),
-            'test_btn': load_icon('\\assets\\test\\button.png'),
-            'success_question': load_icon('\\assets\\test\\qs.png'),
-            'failed_question': load_icon('\\assets\\test\\qc.png'),
-            'process_question': load_icon('\\assets\\test\\qp.png'),
-            'menu_exit': load_icon('\\assets\\main\\menu_exit.png'),
-            'menu_file': load_icon('\\assets\\main\\menu_file.png'),
-            'menu_new': load_icon('\\assets\\main\\menu_new.png'),
-            'menu_new_file': load_icon('\\assets\\main\\menu_new_file.png'),
-            'menu_new_project': load_icon('\\assets\\main\\menu_new_project.png'),
-            'menu_open': load_icon('\\assets\\main\\menu_open.png'),
-            'menu_open_file': load_icon('\\assets\\main\\menu_open_file.png'),
-            'menu_open_project': load_icon('\\assets\\main\\menu_open_project.png'),
-            'menu_save': load_icon('\\assets\\main\\menu_save.png'),
-            'menu_save_as': load_icon('\\assets\\main\\menu_save_as.png'),
-            'menu_txt': load_icon('\\assets\\main\\menu_txt.png'),
-            'main_menu': load_icon('\\assets\\main\\main_menu.png'),
-            'minimize': load_icon('\\assets\\title\\minimize.png'),
-            'maximize': load_icon('\\assets\\title\\maximize.png'),
-            'close': load_icon('\\assets\\title\\close.png'),
-            'title_main': load_icon('\\assets\\title_main.png'),
-            'graph': load_icon('\\assets\\folder\\graph.png'),
-            'bar_chart': load_icon('\\assets\\default\\bar_chart.png'),
-            'function_f_graph': load_icon('\\assets\\default\\function_f_graph.png'),
-        }
-        self.saves_icons = {
-            'save_word': load_icon('\\assets\\save2\\sword.png'),
-            'save_excel': load_icon('\\assets\\save2\\sexcel.png'),
-            'save_pdf': load_icon('\\assets\\save2\\spdf.png'),
-            'save_csv': load_icon('\\assets\\save2\\scsv.png'),
-            'save_json': load_icon('\\assets\\save2\\sjson.png'),
-            'save_html': load_icon('\\assets\\save2\\shtml.png'),
-            'save_txt': load_icon('\\assets\\save2\\stxt.png'),
-            'save_xml': load_icon('\\assets\\save2\\sxml.png'),
-        }
+    @property
+    def change_directory_signal(self) -> QtCore.Signal:
+        """
+        Get the signal to change the directory
+        """
+        return self._change_directory_signal
 
-        self.buttons_name = {
-            'save_word': 'Сохранить как Word',
-            'save_excel': 'Сохранить как Excel',
-            'save_pdf': 'Сохранить как PDF',
-            'save_csv': 'Сохранить как CSV',
-            'save_json': 'Сохранить как JSON',
-            'save_html': 'Сохранить как HTML',
-            'save_txt': 'Сохранить как TXT',
-            'save_xml': 'Сохранить как XML',
-        }
+    @property
+    def load_open_file_signal(self) -> QtCore.Signal:
+        """
+        Get the signal to load the open file
+        """
+        return self._load_open_file_signal
 
     def setupUi(self, _MainWindow: QtWidgets.QMainWindow, *args, **kwargs) -> None:
         _MainWindow.setObjectName("MainWindow")
@@ -148,7 +117,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.centralwidget = QtWidgets.QWidget(_MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
-        self.container = self.setupUiMainFrame()
+        self.container: CustomDataContainer = self.setupUiMainFrame()
         self.bash_console = CustomBashConsole(self.current_workspace, self.container)
         self.bash_console.setVisible(False)
 
@@ -170,7 +139,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         _MainWindow.setCentralWidget(self.centralwidget)
 
         # Create a splitter to divide containers
-        self.splitter = QSplitter(QtCore.Qt.Horizontal)
+        self.splitter = QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.splitter.setHandleWidth(1)
         self.splitter.setStyleSheet("""
               QSplitter::handle {
@@ -193,7 +162,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_toolbar_layout = QVBoxLayout(self.left_toolbar_container)
         self.left_toolbar_layout.setContentsMargins(0, 0, 0, 0)
         self.left_toolbar_layout.setSpacing(0)
-        self.left_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.left_toolbar_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 
         # Buttons for toggling visibility
         self.button_hide_file_widget = QPushButton()
@@ -203,7 +172,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_hide_file_widget.setToolTip("Toggle File Widget")
         self.button_hide_file_widget.setStyleSheet(
             """
-            background-color: #b6cfce;
+            background-color: #f0d1f5;
             """
         )
 
@@ -214,7 +183,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_bash.setToolTip("Toggle Bash Console")
         self.button_bash.setStyleSheet(
             """
-            background-color: transparent;
+            background-color: #dbf5ba;
             """
         )
 
@@ -225,7 +194,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_pyconsole.setToolTip("Toggle Python Console")
         self.button_pyconsole.setStyleSheet(
             """
-            background-color: transparent;
+            background-color: #dbf5ba;
             """
         )
 
@@ -236,7 +205,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_test.setToolTip("Toggle tests")
         self.button_test.setStyleSheet(
             """
-            background-color: transparent;
+            background-color: #dbf5ba;
             """
         )
 
@@ -244,10 +213,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.button_graph_toggle.setObjectName("toggle_graph_btn")
         self.button_graph_toggle.setFixedSize(50, 40)
         self.button_graph_toggle.clicked.connect(self.toggle_buttons_widget_visibility)
-        self.button_test.setToolTip("Toggle graph")
-        self.button_test.setStyleSheet(
+        self.button_graph_toggle.setToolTip("Toggle graph")
+        self.button_graph_toggle.setStyleSheet(
             """
-            background-color: transparent;
+            background-color: #dbf5ba;
             """
         )
 
@@ -263,7 +232,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.left_toolbar_layout.addWidget(self.button_pyconsole)
         self.left_toolbar_layout.addWidget(self.button_bash)
 
-        self.left_toolbar_splitter = QSplitter(QtCore.Qt.Vertical)
+        self.left_toolbar_splitter = QSplitter(QtCore.Qt.Orientation.Vertical)
         self.test_widget = CustomTestWidget(icons=[self.icons.get('success_question'),
                                                    self.icons.get('failed_question'),
                                                    self.icons.get('process_question')],
@@ -280,7 +249,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.graph_widget_histogram_btn.setToolTip("Toggle File Widget")
         self.graph_widget_histogram_btn.setStyleSheet(
             """
-            background-color: #b6cfce;
+            background-color: #dbf5ba;
             """
         )
         self.graph_widget_grapf_fucntion_button = QPushButton(icon=self.icons.get('function_f_graph'))
@@ -290,7 +259,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.graph_widget_grapf_fucntion_button.setToolTip("Toggle File Widget")
         self.graph_widget_grapf_fucntion_button.setStyleSheet(
             """
-            background-color: #b6cfce;
+            background-color: #dbf5ba;
             """
         )
         self.test_widget.set_scrollbar_value.connect(self.container.set_scrollbar_value)
@@ -302,14 +271,16 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         self.file_widget.file_selected.connect(self.container.update_content)
         self.file_widget.filepath_selected.connect(self.update_current_open_file)
-
+        self.change_directory_signal.connect(self.file_widget.change_directory)
+        self.load_open_file_signal.connect(self.file_widget.load_file)
         self.container.need_to_reset.connect(lambda: self.file_widget.load_file(self.current_open_file))
+
         self.graph_box_widget = QWidget()
         layout = QHBoxLayout(self.graph_box_widget)
         btn_widget = QWidget()
         btn_layout = QVBoxLayout(btn_widget)
         btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setAlignment(QtCore.Qt.AlignTop)
+        btn_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         btn_layout.addWidget(self.graph_widget_histogram_btn)
         btn_layout.addWidget(self.graph_widget_grapf_fucntion_button)
         layout.addWidget(btn_widget)
@@ -333,7 +304,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.right_toolbar_layout = QVBoxLayout(self.right_toolbar_container)
         self.right_toolbar_layout.setContentsMargins(0, 0, 0, 0)
         self.right_toolbar_layout.setSpacing(0)
-        self.right_toolbar_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.right_toolbar_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         self.right_toolbar_container.setFixedWidth(60)
 
         self.right_layout.addWidget(self.container)
@@ -348,7 +319,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.update_button_icon()
 
         # Create a separate splitter for the consoles
-        self.splitter_console = QSplitter(QtCore.Qt.Horizontal)
+        self.splitter_console = QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.splitter_console.addWidget(self.bash_console)
         if python_installed:
             self.splitter_console.addWidget(self.pyconsole)
@@ -361,7 +332,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         console_widget.setLayout(console_layout)
 
         # Create a vertical splitter that contains both the main content and the consoles
-        self.splitter_block = QSplitter(QtCore.Qt.Vertical)
+        self.splitter_block = QSplitter(QtCore.Qt.Orientation.Vertical)
         self.splitter_block.addWidget(self.splitter)
         self.splitter_block.addWidget(console_widget)
 
@@ -414,7 +385,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             print(f"Failed to open file explorer: {e}")
 
-    def setupUiMainFrame(self) -> QWidget:
+    def setupUiMainFrame(self) -> CustomDataContainer:
         """
          Setup the main frame of the main window .
         :return: QWidget
@@ -431,7 +402,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.title_bar.update_current_open_file(filepath)
 
     def keyPressEvent(self, event):
-        if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_S:
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_S:
             self.save_file()
         else:
             super().keyPressEvent(event)
@@ -444,27 +415,33 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         file_path = self.current_open_file
         if not file_path:
             return
-        return
-        # if file_path.endswith(".mdth"):
-        #     import json
-        #     try:
-        #         data = self.container.textboxes
-        #
-        #         with open(self.current_open_file, "w", encoding="utf-8") as f:
-        #             json.dump(data, f, ensure_ascii=False, indent=4)
-        #         print("Data saved successfully.")
-        #     except Exception as e:
-        #         print(f"Failed to save data: {e}")
-        #     return
-        # if file_path.endswith((".txt", ".py", ".json")):
-        #     with open(file_path, 'w') as f:
-        #         text = self.container.get_data()
-        #         if not text:
-        #             QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
-        #         f.write(text)
-        #     return
-        # else:
-        #     QMessageBox.information(self, "File saved failed", "File type is not supported")
+
+        if file_path.endswith(".mdth"):
+            import json
+            try:
+                with open(self.current_open_file, "r", encoding="utf-8") as f:
+                    data_file = json.load(f)
+
+                for it, (data_idx, data_ptr) in enumerate(zip(data_file, self.container.all_textboxes)):
+                    if data_ptr.text().isdigit() or data_ptr.text() != '':
+                        data_idx['data'] = data_ptr.text()
+
+                with open(self.current_open_file, "w", encoding="utf-8") as f:
+                    json.dump(data_file, f, ensure_ascii=False, indent=4)
+
+                print("Data saved successfully.")
+            except Exception as e:
+                print(f"Failed to save data: {e}")
+            return
+        if file_path.endswith((".txt", ".py", ".json")):
+            with open(file_path, 'w') as f:
+                text = self.container.get_data()
+                if not text:
+                    QMessageBox.information(self, "File saved failed", "File not is saved, please save it manually")
+                f.write(text)
+            return
+        else:
+            QMessageBox.information(self, "File saved failed", "File type is not supported")
 
     def toggle_buttons_widget_visibility(self) -> None:
         """
@@ -482,7 +459,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             """
             if _widget:
                 visible: bool = not _widget.isVisible()
-                button_styleSheet: str = "background-color: #b6cfce;" if visible else "background-color: transparent;"
+                button_styleSheet: str = "background-color: #f0d1f5;" if visible else "background-color: #dbf5ba;"
                 _widget.setVisible(visible)
                 _button.setStyleSheet(button_styleSheet)
 
@@ -592,7 +569,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         if file_path:
             try:
                 import json
-                with open(f"{os.path.dirname(file_path)}\\configuration_config_mdt.json", "r", encoding="utf-8") as file:
+                with open(f"{os.path.join(os.path.dirname(file_path), 'configuration_config_mdt.json')}", "r",
+                          encoding="utf-8") as file:
                     data = json.load(file)
 
                 from utils.s2f import generate_mdth_file
@@ -607,16 +585,31 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def new_project(self):
-        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
+        options = QFileDialog.Options()
+        directory_path = QFileDialog.getExistingDirectory(self, "Create New Project", options=options)
+        if directory_path:
+            try:
+                from utils.s2f import create_project
 
-        # options = QFileDialog.Options()
-        # directory_path = QFileDialog.getExistingDirectory(self, "Create New Project", options=options)
-        # if directory_path:
-        #     try:
-        #         os.makedirs(directory_path, exist_ok=True)
-        #         QMessageBox.information(self, "Success", f"New project created: {directory_path}")
-        #     except Exception as e:
-        #         QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")
+                res, err = create_project(directory_path)
+                if err:
+                    QMessageBox.critical(self, "Ошибка", f"Не удалось создать проект\n{err}")
+                    return
+
+                check_main_dirs(directory_path)
+
+                from utils.s2f import open_project
+                project_data, err = open_project(directory_path)
+                if err:
+                    QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
+                    return
+
+                self.change_directory_signal.emit(directory_path)
+                self.current_workspace = directory_path
+                self.title_bar.update_current_workspace(directory_path)
+                QMessageBox.information(self, "Success", f"New project created: {directory_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")
 
     def new_python_file(self):
         options = QFileDialog.Options()
@@ -645,44 +638,42 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def open_file(self):
         QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
 
-        # options = QFileDialog.Options()
-        # file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
-        # if file_path:
-        #     try:
-        #         import json
-        #         with open("configuration_config_mdt.json", "r", encoding="utf-8") as file:
-        #             data = json.load(file)
-        #
-        #         from utils.s2f import generate_mdth_file
-        #
-        #         if sys.platform.startswith("win"):
-        #             generate_mdth_file(data, file_path)
-        #         if sys.platform.startswith("lin"):
-        #             generate_mdth_file(data, file_path + ".mdth")
-        #
-        #         QMessageBox.information(self, "Success", f"New file created: {file_path}")
-        #     except Exception as e:
-        #         QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
+        if file_path:
+            try:
+                self.load_open_file_signal.emit(file_path)
+                from utils.s2f import copy_file
+                res, err = copy_file(file_path, self.current_workspace)
+                if err:
+                    QMessageBox.critical(self, "Error", f"Failed to copy file: {str(err)}")
+                    return
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def open_project(self):
         QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
 
-        # directory_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
-        # if directory_path:
-        #     projmd_file = os.path.join(directory_path, "proj.projmd")
-        #     if os.path.isfile(projmd_file):
-        #         import json
-        #         with open(projmd_file, 'r') as f:
-        #             project_data = json.load(f)
-        #             self.current_workspace = project_data["directory"]
-        #             self.reset(self.current_workspace)
+        directory_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
+        if directory_path:
+            from utils.s2f import open_project
+            project_data, err = open_project(directory_path)
+            if err:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
+                return
+
+            check_main_dirs(directory_path)
+            self.change_directory_signal.emit(directory_path)
+            self.current_workspace = directory_path
+            self.title_bar.update_current_workspace(directory_path)
 
     def reset(self, path=None):
         self.file_widget = CustomFileManager(path, self)
         self.container.reset()
 
     def graph_double_click_event(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.open_graph_in_new_window()
 
     def open_graph_in_new_window(self):

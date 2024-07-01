@@ -1036,3 +1036,106 @@ def load_mdth_file(filename: str) -> [bool, Exception]:
     except json.JSONDecodeError as e:
         print(f"Ошибка при чтении файла '{filename}': {e}")
         return None
+
+
+def create_project(dir_path: str, file_type: str = "*") -> [bool, Exception]:
+    """
+    Create project directory
+    :param dir_path: project directory
+    :param file_type: (Optional) file type
+    :return: True on success, False on failure + Exception
+    """
+    try:
+        import json
+    except ImportError:
+        return False, Exception('JSON is not installed')
+
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    project_data = {
+        "directory": dir_path,
+        "file_type": file_type
+    }
+
+    try:
+        projmd_file = os.path.join(dir_path, "proj.projmd")
+        with open(projmd_file, 'w') as f:
+            json.dump(project_data, f, indent=4)
+    except Exception as e:
+        return False, Exception(e)
+
+    from utils.configuration_config_mdt import ConfigurationMDTH
+    try:
+        ConfigurationMDTH.create_configuration_config_mdt(dir_path).save_as_json()
+    except Exception as e:
+        return False, Exception(e)
+    else:
+        return True, None
+
+
+def open_project(dir_path: str, file_type: str = "*") -> [bool, Exception]:
+    """
+    Open project directory
+    :param dir_path: project directory
+    :param file_type: (Optional) file type
+    :return: True on success, False on failure + Exception
+    """
+    try:
+        import json
+    except ImportError:
+        return False, Exception('JSON is not installed')
+
+    projmd_file = os.path.join(dir_path, "proj.projmd")
+    config_file = os.path.join(dir_path, "configuration_config_mdt.json")
+
+    if not os.path.exists(config_file):
+        return False, Exception('Configuration file does not exist')
+
+    if not os.path.exists(projmd_file):
+        return False, Exception('Project file does not exist')
+
+    try:
+        with open(projmd_file, 'r') as f:
+            project_data = json.load(f)
+    except Exception as e:
+        return False, Exception(e)
+
+    return project_data, None
+
+
+def check_main_dirs(path: str) -> None:
+    """
+    Check if the main directories exist
+    :param path: path to the main directories
+    :return: None
+    """
+    import os
+    if not os.path.exists(os.path.join(path, 'export')):
+        os.mkdir(os.path.join(path, 'export'))
+
+
+def copy_file(file_path: str, dir_path: str = None) -> [bool, Exception]:
+    """
+    Copy file from source to destination directory
+    :param file_path: file name to copy to destination directory
+    :param dir_path: destination directory (Optional)
+    :return: True on success, False on failure + Exceptions
+    """
+
+    try:
+        import shutil
+    except ImportError:
+        return False, Exception("Module 'shutil' is not installed")
+
+    if os.path.isfile(file_path):
+        if not dir_path:
+            dir_path: str = os.path.dirname(file_path)
+        base_name: str = os.path.basename(file_path)
+        copy_path: str = os.path.join(dir_path, f"tmp_{base_name}")
+        try:
+            shutil.copy(file_path, copy_path)
+        except Exception as e:
+            return False, Exception(e)
+        else:
+            return True, None
