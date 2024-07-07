@@ -78,6 +78,9 @@ def append_to_word(path: str, data: List, textboxes: List, result_data: List[Lis
 
         file_path = os.path.join(path, 'export', 'Untitled.docx')
         if not os.path.exists(file_path):
+            return save_to_word(file_path, data, textboxes, result_data)
+
+        if not os.path.exists(file_path):
             document = Document()
         else:
             document = Document(file_path)
@@ -93,8 +96,6 @@ def append_to_word(path: str, data: List, textboxes: List, result_data: List[Lis
         if not textboxes_ptr:
             return False, Exception('Text boxes cannot be empty')
 
-        if not os.path.exists(file_path):
-            return save_to_word(file_path, data, textboxes, result_data)
 
         document.add_heading("РЕЗУЛЬТАТЫ", level=1)
 
@@ -459,7 +460,7 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
 
         try:
             output_dir = os.path.join(path, 'export')
-            os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(output_dir, exist_ok=True) # todo fix tihs
             pdf.output(pdf_path)
         except Exception as e:
             return False, e
