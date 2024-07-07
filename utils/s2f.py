@@ -93,6 +93,9 @@ def append_to_word(path: str, data: List, textboxes: List, result_data: List[Lis
         if not textboxes_ptr:
             return False, Exception('Text boxes cannot be empty')
 
+        if not os.path.exists(file_path):
+            return save_to_word(file_path, data, textboxes, result_data)
+
         document.add_heading("РЕЗУЛЬТАТЫ", level=1)
 
         table_main = document.add_table(rows=1, cols=3)
@@ -211,14 +214,17 @@ def append_to_excel(path: str, data: List, textboxes: List, result_data: List[Li
             df_result = pd.DataFrame(append_result) if append_result else pd.DataFrame()
         else:
             df_result = pd.DataFrame()
-
+            
+        if not os.path.exists(f'{path}/export/Untitled.xlsx'):
+            return save_to_excel(path, data, textboxes, result_data)
+        
         try:
             existing_df_data = pd.read_excel(f'{path}/export/Untitled.xlsx', sheet_name='Data')
             existing_df_result = pd.read_excel(f'{path}/export/Untitled.xlsx', sheet_name='Result Data')
         except FileNotFoundError:
             existing_df_data = pd.DataFrame()
             existing_df_result = pd.DataFrame()
-
+            
         combined_df_data = pd.concat([existing_df_data, df_data], axis=1)
         combined_df_result = pd.concat([existing_df_result, df_result], axis=1)
 
@@ -385,6 +391,10 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
 
         # Create new PDF or read existing one
         pdf_path = os.path.join(path, 'export', 'Untitled.pdf')
+
+        if not os.path.exists(pdf_path):
+            return save_to_pdf(pdf_path, data, textboxes, result_data)
+
         if not os.path.exists(pdf_path):
             pdf = PDF()
             pdf.add_page()
@@ -538,6 +548,9 @@ def append_to_csv(path: str, data: List, textboxes: List, result_data: List[List
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, 'Untitled.csv')
 
+        if not os.path.exists(file_path):
+            return save_to_csv(file_path, data, textboxes, result_data)
+
         # Determine if file already exists
         file_exists = os.path.isfile(file_path)
 
@@ -642,6 +655,8 @@ def append_to_txt(path: str, data: List, textboxes: List, result_data: List[List
         output_dir = os.path.join(path, 'export')
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, 'Untitled.txt')
+        if not os.path.isfile(file_path):
+            return save_to_txt(file_path, data, textboxes, result_data)
 
         file_exists = os.path.isfile(file_path)
 
@@ -746,7 +761,8 @@ def append_to_xml(path: str, data: List, textboxes: List, result_data: List[List
     output_dir = os.path.join(path, 'export')
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.xml')
-
+    if not os.path.isfile(file_path):
+        return save_to_xml(file_path, data, textboxes, result_data)
     try:
         if os.path.exists(file_path):
             tree = ET.parse(file_path)
@@ -860,6 +876,9 @@ def append_to_json(path: str, data: List, textboxes: List, result_data: List[Lis
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.json')
 
+    if not os.path.exists(file_path):
+        return save_to_json(path, data, textboxes, result_data)
+
     try:
         # Load existing JSON data if file exists
         existing_data = {}
@@ -961,6 +980,9 @@ def append_to_html(path: str, data: List, textboxes: List, result_data: List[Lis
     output_dir = os.path.join(path, 'export')
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.html')
+
+    if not os.path.exists(file_path):
+        return save_to_html(file_path, data, textboxes, result_data)
 
     # Prepare data
     data_list = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),

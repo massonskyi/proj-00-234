@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QMessageBox, QMainWindow, QWidget, QApplication, Q
 from gui.Threads.LoadThread import LoaderThread
 from gui.main_window import Ui_MainWindow
 from gui.widgets.customs.CustomLoadingWindow import LoadingWindow
-from utils.loaders import load_icon
 from utils.s2f import check_main_dirs
 from utils.tools import check_configuration, remove_pycache_dirs
 
@@ -24,7 +23,6 @@ class Ui_StartMenu(QMainWindow):
         """
         super().__init__()
         # self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the default title bar
-        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self._run_setup()
         self.title_bar = None
         self.setMaximumWidth(600)
@@ -243,18 +241,20 @@ class Ui_StartMenu(QMainWindow):
         :param from_file: Whether the main window is from file or from main window.
         :return: None
         """
-        self.main_window = Ui_MainWindow(assets=self.assets.copy(), **{'path': project_path, 'ft': file_type})
-        if from_file:
-            from utils.s2f import open_project
-            project_data, err = open_project(project_path)
-            if err:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
-                return
-            check_main_dirs(project_path)
-            self.main_window.load_open_file_signal.emit(project_path)
+        try:
+            self.main_window = Ui_MainWindow(assets=self.assets.copy(), **{'path': project_path, 'ft': file_type})
+            if from_file:
+                from utils.s2f import open_project
+                project_data, err = open_project(project_path)
+                if err:
+                    QMessageBox.critical(self, "Ошибка", f"Не удалось открыть проект\n{err}")
+                    return
+                check_main_dirs(project_path)
+                self.main_window.load_open_file_signal.emit(project_path)
 
-        self.main_window.show()
-
+            self.main_window.show()
+        except Exception as e:
+            QMessageBox.critical(self,  "Ошибка", f"Не удалось открыть проект\n{e}")
         if self.isVisible():
             self.close()
             self.assets = None
