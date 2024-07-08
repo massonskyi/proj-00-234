@@ -199,7 +199,7 @@ class CustomDataContainer(QWidget):
         sender: object = self.sender()
         self.check_main_dirs(self.current_workspace)
         try:
-            event: object = sender.objectName()
+            event: object = sender.objectName() if isinstance(sender, QPushButton) else sender.objectName
             if event in self.save_callbacks:
                 self.save_callbacks[event](path=self.current_workspace, data=self.data, textboxes=self.all_textboxes,
                                            result_data=self.result_data)

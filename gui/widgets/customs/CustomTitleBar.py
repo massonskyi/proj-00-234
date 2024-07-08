@@ -275,13 +275,13 @@ class CustomTitleBar(QWidget):
         # New menu
         new_menu = QtWidgets.QMenu("New", self)
         new_menu.setIcon(self.icons.get('menu_new'))
-        new_file_action = self._create_action("New File", self.icons.get('menu_new_file'),
+        new_file_action = self._create_action("New File","menu_new_file", self.icons.get('menu_new_file'),
                                               self.callbacks.get('new_file'))
-        new_project_action = self._create_action("New Project", self.icons.get('menu_new_project'),
+        new_project_action = self._create_action("New Project","new_project", self.icons.get('menu_new_project'),
                                                  self.callbacks.get('new_project'))
-        new_python_action = self._create_action("New Python File", self.icons.get('py'),
+        new_python_action = self._create_action("New Python File","py", self.icons.get('py'),
                                                 self.callbacks.get('new_py_file')) if self.parent().pyconsole else None
-        new_plain_text_action = self._create_action("New Plain Text", self.icons.get('menu_txt'),
+        new_plain_text_action = self._create_action("New Plain Text","menu_txt", self.icons.get('menu_txt'),
                                                     self.callbacks.get('new_txt_file'))
         self._add_actions(new_menu, [new_file_action, new_project_action])
         if new_python_action:
@@ -292,9 +292,9 @@ class CustomTitleBar(QWidget):
         # Open menu
         open_menu = QtWidgets.QMenu("Open", self)
         open_menu.setIcon(self.icons.get('menu_open'))
-        open_file_action = self._create_action("Open File", self.icons.get('menu_file'),
+        open_file_action = self._create_action("Open File","menu_file", self.icons.get('menu_file'),
                                                self.callbacks.get('open_file'))
-        open_project_action = self._create_action("Open Project", self.icons.get('menu_open_project'),
+        open_project_action = self._create_action("Open Project","menu_open_project", self.icons.get('menu_open_project'),
                                                   self.callbacks.get('open_project'))
         self._add_actions(open_menu, [open_file_action, open_project_action])
 
@@ -302,33 +302,82 @@ class CustomTitleBar(QWidget):
         save_menu = QtWidgets.QMenu("Save As", self)
         save_menu.setIcon(self.icons.get('menu_save_as'))
         save_actions = [
-            self._create_action("docx", self.saves_icons.get('save_word'), self.callbacks.get('save')),
-            self._create_action("xlsx", self.saves_icons.get('save_excel'), self.callbacks.get('save')),
-            self._create_action("pdf", self.saves_icons.get('save_pdf'), self.callbacks.get('save')),
-            self._create_action("csv", self.saves_icons.get('save_csv'), self.callbacks.get('save')),
-            self._create_action("json", self.saves_icons.get('save_json'), self.callbacks.get('save')),
-            self._create_action("html", self.saves_icons.get('save_html'), self.callbacks.get('save')),
-            self._create_action("xml", self.saves_icons.get('save_xml'), self.callbacks.get('save')),
-            self._create_action("txt", self.saves_icons.get('save_txt'), self.callbacks.get('save'))
+            self._create_action(
+                "docx",
+                "save_word",
+                self.saves_icons.get('save_word'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "xlsx",
+                "save_excel",
+                self.saves_icons.get('save_excel'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "pdf",
+                "save_pdf",
+                self.saves_icons.get('save_pdf'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "csv",
+                "save_csv",
+                self.saves_icons.get('save_csv'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "json",
+                "save_json",
+                self.saves_icons.get('save_json'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "html",
+                "save_html",
+                self.saves_icons.get('save_html'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "xml",
+                "save_xml",
+                self.saves_icons.get('save_xml'),
+                self.callbacks.get('save')
+            ),
+
+            self._create_action(
+                "txt",
+                "save_txt",
+                self.saves_icons.get('save_txt'),
+                self.callbacks.get('save')
+            )
         ]
         self._add_actions(save_menu, save_actions)
 
         file_menu.addMenu(new_menu)
         file_menu.addMenu(open_menu)
-        file_menu.addAction(self._create_action("Save", self.icons.get('menu_save'), self.callbacks.get('save_file')))
+        file_menu.addAction(self._create_action("Save","menu_save", self.icons.get('menu_save'), self.callbacks.get('save_file')))
         file_menu.addMenu(save_menu)
         file_menu.addSeparator()
-        file_menu.addAction(self._create_action("Exit", self.icons.get('menu_exit'), self.callbacks.get('close')))
+        file_menu.addAction(self._create_action("Exit","menu_exit", self.icons.get('menu_exit'), self.callbacks.get('close')))
         file_menu.setIcon(self.icons.get('main_menu'))
 
         self.projects_menu: QtWidgets.QMenu = self.menubar.addMenu(os.path.basename(self.current_workspace))
-        open_project_action = self._create_action("Open...", self.icons.get('menu_open'),
+        open_project_action = self._create_action("Open...",
+                                                  "menu_open",
+                                                  self.icons.get('menu_open'),
                                                   self.callbacks.get('open_file_explorer'))
 
         self.projects_menu.addAction(open_project_action)
         self.projects_menu.addSeparator()
 
-        current_project_action = self._create_action(os.path.basename(self.parent().current_workspace),
+        current_project_action = self._create_action(os.path.basename(self.parent().current_workspace),"menu_open",
                                                      self.icons.get('menu_open'),
                                                      lambda: self.callbacks.get('save')(
                                                          self.parent().current_workspace))
@@ -336,7 +385,7 @@ class CustomTitleBar(QWidget):
 
         return self.menubar
 
-    def _create_action(self, text: str, icon: QtGui.QIcon, callback: Callable) -> QAction:
+    def _create_action(self, text: str, name=None, icon: QtGui.QIcon=None, callback: Callable=None) -> QAction:
         """
         Create a new action
         :param text: the text of the action
@@ -346,6 +395,7 @@ class CustomTitleBar(QWidget):
         """
         action = QAction(text=text, icon=icon, parent=self)
         action.triggered.connect(callback)
+        action.objectName = name
         return action
 
     @staticmethod

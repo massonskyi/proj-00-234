@@ -636,8 +636,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create plain text file: {str(e)}")
 
     def open_file(self):
-        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
-
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*)", options=options)
         if file_path:
@@ -653,8 +651,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                 QMessageBox.critical(self, "Error", f"Failed to create file: {str(e)}")
 
     def open_project(self):
-        QMessageBox.information(self, "Warning", "This function is currently not implemented, added in the future")
-
         directory_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Выбрать директорию проекта для открытия")
         if directory_path:
             from utils.s2f import open_project

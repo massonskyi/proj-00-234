@@ -2,6 +2,8 @@ import os
 import sys
 from typing import List
 
+from PyPDF2 import PdfReader, PdfWriter
+
 
 def save_to_word(path: str, data: List, textboxes: List, result_data: List[List[str]]) -> [bool, Exception]:
     """
@@ -76,9 +78,11 @@ def append_to_word(path: str, data: List, textboxes: List, result_data: List[Lis
         if not os.path.exists(path):
             os.makedirs(path)
 
+        if not os.path.exists(f'{path}/export/Untitled.docx'):
+            return save_to_word(path, data, textboxes, result_data)
+
         file_path = os.path.join(path, 'export', 'Untitled.docx')
-        if not os.path.exists(file_path):
-            return save_to_word(file_path, data, textboxes, result_data)
+
 
         if not os.path.exists(file_path):
             document = Document()
@@ -202,9 +206,6 @@ def append_to_excel(path: str, data: List, textboxes: List, result_data: List[Li
         if not textboxes_ptr:
             return False, Exception('Text boxes cannot be empty')
 
-        # data_list: List = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
-        #                     'data': textboxes_ptr[i].text()} for i, item in enumerate(data_prt)]
-
         data_list: List = [{'data': item.text()} for item in textboxes_ptr]
 
         df_data = pd.DataFrame(data_list)
@@ -301,7 +302,7 @@ def save_to_pdf(path: str, data: List, textboxes: List, result_data: List[List[s
         current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
         font_dir = os.path.join(current_dir, 'fonts')
         font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
-        bold_font_path = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+        bold_font_path = os.path.join(font_dir, 'DejaVuSansBold.ttf')
 
         # Debugging statements to ensure paths are correct
         print(f"Current Directory: {current_dir}")
@@ -385,6 +386,9 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
         if not textboxes:
             return False, Exception('Text boxes cannot be empty')
 
+        if not os.path.exists(f'{path}/export/Untitled.pdf'):
+            return save_to_pdf(path, data, textboxes, result_data)
+
         class PDF(FPDF):
             def header(self) -> None:
                 self.set_font('Arial', 'B', 12)
@@ -393,17 +397,9 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
         # Create new PDF or read existing one
         pdf_path = os.path.join(path, 'export', 'Untitled.pdf')
 
-        if not os.path.exists(pdf_path):
-            return save_to_pdf(pdf_path, data, textboxes, result_data)
+        pdf = PDF()
+        pdf.add_page()
 
-        if not os.path.exists(pdf_path):
-            pdf = PDF()
-            pdf.add_page()
-        else:
-            pdf = PDF()
-            pdf.add_page()
-
-        # Load appropriate fonts based on platform
         if sys.platform.startswith('win32'):
             arial_path = 'C:\\Windows\\Fonts\\arial.ttf'
             arial_bold_path = 'C:\\Windows\\Fonts\\arialbd.ttf'
@@ -421,10 +417,11 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
             current_dir = os.path.abspath(os.path.dirname(__file__))
             font_dir = os.path.join(current_dir, 'fonts')
             font_path = os.path.join(font_dir, 'DejaVuSans.ttf')
-            bold_font_path = os.path.join(font_dir, 'DejaVuSans-Bold.ttf')
+            bold_font_path = os.path.join(font_dir, 'DejaVuSansBold.ttf')
 
             if not os.path.isfile(font_path):
                 return False, FileNotFoundError(f"Font file not found: {font_path}")
+
             if not os.path.isfile(bold_font_path):
                 return False, FileNotFoundError(f"Bold font file not found: {bold_font_path}")
 
@@ -459,9 +456,26 @@ def append_to_pdf(path: str, data: List, textboxes: List, result_data: List[List
             pdf.multi_cell(0, 10, txt=text)
 
         try:
-            output_dir = os.path.join(path, 'export')
-            os.makedirs(output_dir, exist_ok=True) # todo fix tihs
-            pdf.output(pdf_path)
+            if os.path.exists(pdf_path):
+                reader = PdfReader(pdf_path)
+                writer = PdfWriter()
+
+                for page in reader.pages:
+                    writer.add_page(page)
+
+                temp_pdf_path = os.path.join(path, 'export', 'Temp.pdf')
+                pdf.output(temp_pdf_path)
+
+                temp_reader = PdfReader(temp_pdf_path)
+                for page in temp_reader.pages:
+                    writer.add_page(page)
+
+                with open(pdf_path, 'wb') as f:
+                    writer.write(f)
+
+                os.remove(temp_pdf_path)
+            else:
+                pdf.output(pdf_path)
         except Exception as e:
             return False, e
         else:
@@ -534,6 +548,9 @@ def append_to_csv(path: str, data: List, textboxes: List, result_data: List[List
         return False, Exception('CSV module is not installed')
 
     try:
+        if not os.path.exists(f'{path}/export/Untitled.csv'):
+            return save_to_csv(path, data, textboxes, result_data)
+
         if data == []:
             return False, Exception('Data cannot be empty')
 
@@ -548,9 +565,6 @@ def append_to_csv(path: str, data: List, textboxes: List, result_data: List[List
         output_dir = os.path.join(path, 'export')
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, 'Untitled.csv')
-
-        if not os.path.exists(file_path):
-            return save_to_csv(file_path, data, textboxes, result_data)
 
         # Determine if file already exists
         file_exists = os.path.isfile(file_path)
@@ -641,6 +655,9 @@ def append_to_txt(path: str, data: List, textboxes: List, result_data: List[List
     :param result_data: Result data to save to txt file
     :return: True on success, False on failure + Exception
     """
+    if not os.path.exists(f'{path}/export/Untitled.txt'):
+        return save_to_txt(path, data, textboxes, result_data)
+
     if data == []:
         return False, Exception('Data cannot be empty')
 
@@ -656,8 +673,7 @@ def append_to_txt(path: str, data: List, textboxes: List, result_data: List[List
         output_dir = os.path.join(path, 'export')
         os.makedirs(output_dir, exist_ok=True)
         file_path = os.path.join(output_dir, 'Untitled.txt')
-        if not os.path.isfile(file_path):
-            return save_to_txt(file_path, data, textboxes, result_data)
+
 
         file_exists = os.path.isfile(file_path)
 
@@ -748,6 +764,9 @@ def append_to_xml(path: str, data: List, textboxes: List, result_data: List[List
     except ImportError:
         return False, Exception('XML is not installed')
 
+    if not os.path.exists(f'{path}/export/Untitled.xml'):
+        return save_to_xml(path, data, textboxes, result_data)
+
     if data == []:
         return False, Exception('Data cannot be empty')
 
@@ -762,8 +781,7 @@ def append_to_xml(path: str, data: List, textboxes: List, result_data: List[List
     output_dir = os.path.join(path, 'export')
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.xml')
-    if not os.path.isfile(file_path):
-        return save_to_xml(file_path, data, textboxes, result_data)
+
     try:
         if os.path.exists(file_path):
             tree = ET.parse(file_path)
@@ -862,6 +880,9 @@ def append_to_json(path: str, data: List, textboxes: List, result_data: List[Lis
     except ImportError:
         return False, Exception('JSON is not installed')
 
+    if not os.path.exists(f'{path}/export/Untitled.json'):
+        return save_to_json(path, data, textboxes, result_data)
+
     if data == []:
         return False, Exception('Data cannot be empty')
 
@@ -876,9 +897,6 @@ def append_to_json(path: str, data: List, textboxes: List, result_data: List[Lis
     output_dir = os.path.join(path, 'export')
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.json')
-
-    if not os.path.exists(file_path):
-        return save_to_json(path, data, textboxes, result_data)
 
     try:
         # Load existing JSON data if file exists
@@ -967,6 +985,9 @@ def append_to_html(path: str, data: List, textboxes: List, result_data: List[Lis
     except ImportError:
         return False, Exception('Pandas is not installed')
 
+    if not os.path.exists(f'{path}/export/Untitled.html'):
+        return save_to_html(path, data, textboxes, result_data)
+
     if data == []:
         return False, Exception('Data cannot be empty')
 
@@ -981,9 +1002,6 @@ def append_to_html(path: str, data: List, textboxes: List, result_data: List[Lis
     output_dir = os.path.join(path, 'export')
     os.makedirs(output_dir, exist_ok=True)
     file_path = os.path.join(output_dir, 'Untitled.html')
-
-    if not os.path.exists(file_path):
-        return save_to_html(file_path, data, textboxes, result_data)
 
     # Prepare data
     data_list = [{'№ п/п': item.get("idx", ""), 'Показатель': item.get("name", ""),
